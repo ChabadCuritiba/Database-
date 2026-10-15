@@ -13,6 +13,7 @@
   --radius: 8px;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { font-size: 15px; }
 body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.45; }
 a { color: var(--primary); }
@@ -210,3 +211,8 @@ details > summary { cursor: pointer; }
 .form .combo.single input { margin-top: 0 !important; }
 .combo.single input.chosen { background: #eaf0fa; border-color: var(--primary); color: var(--primary); font-weight: 600; }
 .combo.single .dropdown { left: 0; right: auto; min-width: 100%; width: max-content; max-width: min(520px, 90vw); }
+
+/* Contacts bulk actions */
+.bulkbar-top { position: sticky; top: 0; z-index: 5; background: #fffbea; border: 1px solid #fedf89; border-radius: 6px; padding: 8px 12px; margin-bottom: 8px; }
+.bulkbar-top select { max-width: 260px; }
+.bulkbar .sep { color: var(--muted); }

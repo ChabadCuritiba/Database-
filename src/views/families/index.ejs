@@ -18,17 +18,38 @@
   </form>
 </details>
 
-<form method="post" action="/families/bulk-categorize">
+<% const bulk = can('contacts.write'); %>
+<form method="post" action="/families/bulk-categorize" data-bulk-form>
   <%- include('../partials/csrf') %>
+  <input type="hidden" name="qs" value="<%= qs %>">
+  <input type="hidden" name="all_matching" value="" data-all-matching>
+  <% if (bulk && rows.length) { %>
+  <div class="bulkbar bulkbar-top" data-bulkbar hidden>
+    <strong data-selected-count>0 selected</strong>
+    <% if (total > rows.length) { %>
+      <button type="button" class="link" data-select-matching>Select all <%= total %> matching contacts</button>
+    <% } %>
+    <% if (categories.length) { %>
+      <span class="sep">·</span>
+      <select name="category_id" aria-label="Category"><% for (const c of categories) { %><option value="<%= c.id %>"><%= c.path %></option><% } %></select>
+      <button class="btn btn-small">Apply tag</button>
+    <% } %>
+    <% if (can('admin')) { %>
+      <span class="sep">·</span>
+      <button class="btn btn-small btn-danger" formaction="/families/bulk-delete" data-bulk-delete>Delete selected</button>
+    <% } %>
+    <button type="button" class="link small" data-clear-selection>Clear</button>
+  </div>
+  <% } %>
   <table class="table">
     <thead><tr>
-      <% if (can('contacts.write')) { %><th><input type="checkbox" data-select-all="family_ids" aria-label="Select all"></th><% } %>
+      <% if (bulk) { %><th><input type="checkbox" data-select-all="family_ids" aria-label="Select all on this page"></th><% } %>
       <th>Family</th><th>Contact</th><th>City</th><th>Affiliation</th><th>Priority</th>
     </tr></thead>
     <tbody>
     <% for (const f of rows) { %>
       <tr>
-        <% if (can('contacts.write')) { %><td><input type="checkbox" name="family_ids" value="<%= f.id %>"></td><% } %>
+        <% if (bulk) { %><td><input type="checkbox" name="family_ids" value="<%= f.id %>" aria-label="Select <%= f.family_name %>"></td><% } %>
         <td><a href="/families/<%= f.id %>"><strong><%= f.family_name %></strong></a><div class="small muted"><%= f.salutation %></div></td>
         <td class="small"><%= f.email %><br><%= f.mobile || f.phone %></td>
         <td><%= f.city %><%= f.state ? '/' + f.state : '' %></td>
@@ -39,13 +60,6 @@
     <% if (!rows.length) { %><tr><td colspan="6" class="muted">No contacts found.</td></tr><% } %>
     </tbody>
   </table>
-  <% if (can('contacts.write') && categories.length) { %>
-  <div class="bulkbar">
-    Tag selected with
-    <select name="category_id"><% for (const c of categories) { %><option value="<%= c.id %>"><%= c.path %></option><% } %></select>
-    <button class="btn btn-small">Apply tag</button>
-  </div>
-  <% } %>
 </form>
 
 <% if (pages > 1) { %>

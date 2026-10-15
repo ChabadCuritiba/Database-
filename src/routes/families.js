@@ -66,14 +66,56 @@ router.get('/export.csv', requirePermission('contacts.write'), (req, res) => {
 });
 
 // Bulk-tag the families matching a search.
+/**
+ * Contacts targeted by a bulk action: the ticked ones, or with all_matching=1
+ * every contact matching the list's current search/filters (passed as `qs`).
+ */
+function bulkTargets(db, body) {
+  if (body.all_matching === '1') {
+    const criteria = {};
+    for (const [k, v] of new URLSearchParams(String(body.qs || ''))) {
+      if (k === 'page') continue;
+      criteria[k] = k in criteria ? [].concat(criteria[k], v) : v;
+    }
+    return findFamilies(db, criteria).rows.map((f) => f.id);
+  }
+  return ids(body.family_ids);
+}
+
+function backToList(body) {
+  const qs = String(body.qs || '');
+  return qs ? `/families?${qs}` : '/families';
+}
+
 router.post('/bulk-categorize', requirePermission('contacts.write'), (req, res) => {
   const db = req.app.get('db');
-  const familyIds = ids(req.body.family_ids);
+  const familyIds = bulkTargets(db, req.body);
   const categoryId = int(req.body.category_id);
   if (!categoryId || !familyIds.length) throw httpError(400, 'Choose a category and at least one contact');
   const ins = db.prepare('INSERT OR IGNORE INTO family_categories (family_id, category_id) VALUES (?, ?)');
   db.transaction(() => familyIds.forEach((f) => ins.run(f, categoryId)))();
+  audit(db, req.user, 'categorize', 'families', null, { category: categoryId, count: familyIds.length });
   req.flash('success', `Tagged ${familyIds.length} contacts.`);
+  res.redirect(backToList(req.body));
+});
+
+router.post('/bulk-delete', requirePermission('admin'), (req, res) => {
+  const db = req.app.get('db');
+  const familyIds = bulkTargets(db, req.body);
+  if (!familyIds.length) throw httpError(400, 'Select at least one contact to delete');
+  const names = [];
+  const get = db.prepare('SELECT family_name FROM families WHERE id = ?');
+  const del = db.prepare('DELETE FROM families WHERE id = ?');
+  db.transaction(() => {
+    for (const id of familyIds) {
+      const f = get.get(id);
+      if (!f) continue;
+      del.run(id);
+      names.push(f.family_name);
+    }
+  })();
+  audit(db, req.user, 'delete', 'families', null, { count: names.length, names: names.slice(0, 200) });
+  req.flash('success', `Deleted ${names.length} contact${names.length === 1 ? '' : 's'}.`);
   res.redirect('/families');
 });
 

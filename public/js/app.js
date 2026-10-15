@@ -26,6 +26,45 @@
     });
   });
 
+  // Contacts list: selection bar with tag / delete for the ticked contacts or all matching ones.
+  $$('[data-bulk-form]').forEach((form) => {
+    const bar = form.querySelector('[data-bulkbar]');
+    if (!bar) return;
+    const boxes = $$('input[name=family_ids]', form);
+    const master = form.querySelector('[data-select-all]');
+    const count = bar.querySelector('[data-selected-count]');
+    const allMatching = form.querySelector('[data-all-matching]');
+    const matchingBtn = bar.querySelector('[data-select-matching]');
+    const total = matchingBtn ? Number(matchingBtn.textContent.replace(/\D/g, '')) : boxes.length;
+    const update = () => {
+      const n = boxes.filter((b) => b.checked).length;
+      if (allMatching.value === '1' && n < boxes.length) allMatching.value = '';
+      const all = allMatching.value === '1';
+      bar.hidden = n === 0;
+      count.textContent = all ? `All ${total} matching contacts selected` : `${n} selected`;
+      if (matchingBtn) matchingBtn.hidden = all || n < boxes.length;
+      if (master) master.checked = n > 0 && n === boxes.length;
+    };
+    form.addEventListener('change', update);
+    if (matchingBtn) matchingBtn.addEventListener('click', () => {
+      allMatching.value = '1';
+      boxes.forEach((b) => { b.checked = true; });
+      update();
+    });
+    bar.querySelector('[data-clear-selection]').addEventListener('click', () => {
+      allMatching.value = '';
+      boxes.forEach((b) => { b.checked = false; });
+      update();
+    });
+    const del = bar.querySelector('[data-bulk-delete]');
+    if (del) del.addEventListener('click', (e) => {
+      const n = allMatching.value === '1' ? total : boxes.filter((b) => b.checked).length;
+      const msg = `Delete ${n} contact${n === 1 ? '' : 's'}? Their family members, occasions, orders and pledges are deleted too. Donations stay in the records as anonymous. This cannot be undone.`;
+      if (!window.confirm(msg)) e.preventDefault();
+    });
+    update();
+  });
+
   // CEP lookup (ViaCEP) fills the address fields.
   $$('input[data-cep]').forEach((input) => {
     const form = input.form;

@@ -446,3 +446,36 @@ test('English default templates already saved are upgraded to Portuguese, edited
   assert.ok(names.includes('Geral') && !names.includes('General'));
   assert.ok(names.includes('Our Shul Fund'));
 });
+
+test('contacts can be deleted in bulk: ticked ones or all matching a search', async () => {
+  const { db, app } = setup();
+  const a = createFamily(db, { family_name: 'Alpha' });
+  const b = createFamily(db, { family_name: 'Beta' });
+  const keep = createFamily(db, { family_name: 'Keeper', city: 'Londrina' });
+  for (let i = 0; i < 60; i++) createFamily(db, { family_name: `Bulk${i}`, city: 'Maringa' });
+  recordDonation(db, { familyId: a, date: '2026-01-01', splits: [{ fundId: 1, amount: 1000 }] });
+
+  const staff = await login(app, 'staff');
+  let res = await staff.postForm('/families/bulk-delete', { family_ids: [String(a)] });
+  assert.equal(res.status, 403);
+
+  const admin = await login(app, 'admin');
+  const page = await admin.get('/families');
+  assert.match(page.text, /Delete selected/);
+  assert.match(page.text, /Select all 63 matching contacts/);
+
+  res = await admin.postForm('/families/bulk-delete', { family_ids: [String(a), String(b)] });
+  assert.equal(res.status, 302);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM families WHERE id IN (?, ?)').get(a, b).n, 0);
+  // The donation stays, now without a donor.
+  assert.equal(db.prepare('SELECT family_id FROM payments').get().family_id, null);
+
+  // "All matching" covers every page of the current search, not just the 50 shown.
+  res = await admin.postForm('/families/bulk-delete', { all_matching: '1', qs: 'city=Maringa&page=2' });
+  assert.equal(res.status, 302);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE city = 'Maringa'").get().n, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM families WHERE id = ?').get(keep).n, 1);
+
+  res = await admin.postForm('/families/bulk-delete', {});
+  assert.equal(res.status, 400);
+});
