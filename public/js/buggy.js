@@ -25,10 +25,44 @@
   langSel.value = store.get('lang', 'pt-BR');
   // Speak replies: 'voice' = only when the request was spoken (default), 'always', or 'never'.
   speakBox.value = store.get('speakMode', store.get('speak', '1') === '0' ? 'never' : 'voice');
-  langSel.addEventListener('change', () => { store.set('lang', langSel.value); restartListening(); });
+  langSel.addEventListener('change', () => { store.set('lang', langSel.value); applyLanguage(); restartListening(); });
   speakBox.addEventListener('change', () => store.set('speakMode', speakBox.value));
 
   const setStatus = (t) => { if (status) status.textContent = t; };
+
+  // The page's own short texts, in the chosen language.
+  const UI = {
+    'pt-BR': { open: 'Abrir', confirmTitle: 'Confirmar?', yes: '✓ Sim, salvar', no: 'Cancelar', yesWord: 'Sim', noWord: 'Não', placeholder: 'Escreva para o Buggy…',
+      sayYes: 'Diga “sim” para salvar ou “não” para cancelar.', tapYes: 'Toque em “Sim, salvar” ou “Cancelar”.', listening: 'Escutando…',
+      micBlocked: 'Permita o microfone (toque no ícone à esquerda do endereço).', noSpeech: 'Não ouvi nada. Toque e fale de novo.',
+      yesListening: 'Sim? Estou ouvindo…', wakeHint: 'Diga “Buggy” e o seu pedido…', wakeBlocked: 'Permita o microfone para usar o “Hey Buggy”.',
+      welcome: 'Shalom! Eu sou o Buggy. Posso procurar contatos, adicionar pessoas, registrar doações e Yahrzeits. Por exemplo: “Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com”.',
+      offline: 'Sem conexão com o servidor.', dropped: 'A conexão caiu antes da resposta. Tente de novo.', newChat: 'Nova conversa. Como posso ajudar?' },
+    'en-US': { open: 'Open', confirmTitle: 'Confirm?', yes: '✓ Yes, save', no: 'Cancel', yesWord: 'Yes', noWord: 'No', placeholder: 'Write to Buggy…',
+      sayYes: 'Say “yes” to save or “no” to cancel.', tapYes: 'Tap “Yes, save” or “Cancel”.', listening: 'Listening…',
+      micBlocked: 'Allow the microphone (tap the icon left of the address).', noSpeech: "I didn't hear anything. Tap and speak again.",
+      yesListening: "Yes? I'm listening…", wakeHint: 'Say “Buggy” and your request…', wakeBlocked: 'Allow the microphone to use “Hey Buggy”.',
+      welcome: 'Shalom! I am Buggy. I can find contacts, add people, record donations and Yahrzeits. For example: “Add Joseli and Dimini to the contacts, email joseli@gmail.com”.',
+      offline: 'No connection to the server.', dropped: 'The connection dropped before the answer. Please try again.', newChat: 'New conversation. How can I help?' },
+    'he-IL': { open: 'פתח', confirmTitle: 'לאשר?', yes: '✓ כן, לשמור', no: 'ביטול', yesWord: 'כן', noWord: 'לא', placeholder: 'כתוב לבאגי…',
+      sayYes: 'אמור “כן” כדי לשמור או “לא” כדי לבטל.', tapYes: 'הקש “כן, לשמור” או “ביטול”.', listening: 'מקשיב…',
+      micBlocked: 'אשר גישה למיקרופון (הקש על הסמל משמאל לכתובת).', noSpeech: 'לא שמעתי כלום. הקש ודבר שוב.',
+      yesListening: 'כן? אני מקשיב…', wakeHint: 'אמור “באגי” ואת הבקשה שלך…', wakeBlocked: 'אשר גישה למיקרופון כדי להשתמש ב“Hey Buggy”.',
+      welcome: 'שלום! אני באגי. אני יכול לחפש אנשי קשר, להוסיף אנשים, לרשום תרומות ויארצייטים. לדוגמה: “תוסיף את יוסי כהן לאנשי הקשר, אימייל yossi@gmail.com”.',
+      offline: 'אין חיבור לשרת.', dropped: 'החיבור נותק לפני התשובה. נסה שוב.', newChat: 'שיחה חדשה. איך אפשר לעזור?' },
+  };
+  const ui = () => UI[langSel.value] || UI['pt-BR'];
+  function applyLanguage() {
+    const u = ui();
+    const title = card.querySelector('strong');
+    if (title) title.textContent = u.confirmTitle;
+    $('[data-yes]').textContent = u.yes;
+    $('[data-no]').textContent = u.no;
+    input.placeholder = u.placeholder;
+    const welcome = chat.querySelector('[data-welcome]');
+    if (welcome) welcome.textContent = u.welcome;
+    chat.dir = langSel.value === 'he-IL' ? 'auto' : '';
+  }
   const scroll = () => { chat.scrollTop = chat.scrollHeight; };
   function bubble(text, who, links) {
     const div = document.createElement('div');
@@ -37,19 +71,10 @@
     for (const l of links || []) {
       const a = document.createElement('a');
       a.href = l.href;
-      a.textContent = 'Abrir';
+      a.textContent = ui().open;
       a.className = 'bubble-link';
       div.appendChild(document.createTextNode(' '));
       div.appendChild(a);
-    }
-    if (who !== 'me' && synth) {
-      const replay = document.createElement('button');
-      replay.type = 'button';
-      replay.className = 'replay';
-      replay.setAttribute('aria-label', 'Ouvir');
-      replay.textContent = '🔊';
-      replay.addEventListener('click', () => { div.classList.remove('needs-tap'); say(text, div); });
-      div.appendChild(replay);
     }
     chat.appendChild(div);
     scroll();
@@ -84,8 +109,8 @@
       || voices.find((v) => v.lang && v.lang.replace('_', '-').startsWith(want));
   }
 
-  /** Reads text aloud. Resolves when done; marks the bubble if the phone blocked it. */
-  function say(text, bubbleEl) {
+  /** Reads text aloud; resolves when done. */
+  function say(text) {
     if (!synth || !text) return Promise.resolve();
     return new Promise((resolve) => {
       speaking = true;
@@ -101,20 +126,19 @@
         u.onstart = () => { started = true; };
         u.onend = finish;
         u.onerror = (e) => {
-          if (e.error === 'not-allowed' && bubbleEl) bubbleEl.classList.add('needs-tap');
           finish();
         };
-        // If speech never starts (blocked), stop waiting and offer the 🔊 button.
-        const guard = setTimeout(() => { if (!started) { if (bubbleEl) bubbleEl.classList.add('needs-tap'); try { synth.cancel(); } catch { /* ignore */ } resolve(); } }, 3000);
+        // If speech never starts (blocked by the phone), stop waiting.
+        const guard = setTimeout(() => { if (!started) { try { synth.cancel(); } catch { /* ignore */ } resolve(); } }, 3000);
         synth.speak(u);
       }, 250);
     }).finally(() => { speaking = false; resumeListening(); });
   }
 
-  function speak(text, viaVoice, bubbleEl) {
+  function speak(text, viaVoice) {
     const mode = speakBox.value;
     if (mode === 'never' || (mode === 'voice' && !viaVoice)) return Promise.resolve();
-    return say(text, bubbleEl);
+    return say(text);
   }
 
   // --- Talking to the server ---
@@ -131,11 +155,11 @@
     return data;
   }
   async function handle(result, viaVoice) {
-    if (result.error) { const b = bubble(result.error, 'buggy'); setStatus(''); return speak(result.error, viaVoice, b); }
-    const b = bubble(result.reply, 'buggy', result.links);
+    if (result.error) { bubble(result.error, 'buggy'); setStatus(''); return speak(result.error, viaVoice); }
+    bubble(result.reply, 'buggy', result.links);
     showPending(result.pending);
-    setStatus(result.pending && result.pending.length ? (viaVoice ? 'Diga “sim” para salvar ou “não” para cancelar.' : 'Toque em “Sim, salvar” ou “Cancelar”.') : '');
-    await speak(result.reply, viaVoice, b);
+    setStatus(result.pending && result.pending.length ? (viaVoice ? ui().sayYes : ui().tapYes) : '');
+    await speak(result.reply, viaVoice);
   }
   // Progress steps, in the language chosen on the page.
   const STEPS = {
@@ -175,7 +199,7 @@
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'content-type': 'application/json', accept: 'application/x-ndjson', 'x-csrf-token': csrf },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, lang: langSel.value }),
     });
     if (!res.ok || !res.body || !(res.headers.get('content-type') || '').includes('ndjson')) {
       const data = await res.json().catch(() => ({ error: `Erro ${res.status}` }));
@@ -200,7 +224,7 @@
       }
       if (done) break;
     }
-    return final || { error: 'A conexão caiu antes da resposta. Tente de novo.' };
+    return final || { error: ui().dropped };
   }
 
   async function send(text, viaVoice = false) {
@@ -216,7 +240,7 @@
       await handle(result, viaVoice);
     } catch {
       progress.remove();
-      bubble('Sem conexão com o servidor.', 'buggy');
+      bubble(ui().offline, 'buggy');
       setStatus('');
     } finally {
       busy = false;
@@ -226,8 +250,8 @@
   async function decide(decision, viaVoice = false) {
     if (busy) return;
     busy = true;
-    bubble(decision === 'yes' ? 'Sim' : 'Não', 'me');
-    try { await handle(await post('/assistant/confirm', { decision }), viaVoice); } finally { busy = false; resumeListening(); }
+    bubble(decision === 'yes' ? ui().yesWord : ui().noWord, 'me');
+    try { await handle(await post('/assistant/confirm', { decision, lang: langSel.value }), viaVoice); } finally { busy = false; resumeListening(); }
   }
 
   $('[data-composer]').addEventListener('submit', (e) => {
@@ -242,7 +266,7 @@
     await post('/assistant/reset');
     chat.innerHTML = '';
     showPending([]);
-    bubble('Nova conversa. Como posso ajudar?', 'buggy');
+    bubble(ui().newChat, 'buggy');
   });
 
   // --- Speech in ---
@@ -275,7 +299,7 @@
     rec = makeRecognizer(false);
     listening = true;
     mic.classList.add('on');
-    setStatus('Escutando…');
+    setStatus(ui().listening);
     let finalText = '';
     rec.onresult = (e) => {
       let interim = '';
@@ -286,8 +310,8 @@
       input.value = finalText || interim;
     };
     rec.onerror = (e) => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') setStatus('Permita o microfone (toque no ícone de cadeado da página).');
-      else if (e.error === 'no-speech') setStatus('Não ouvi nada. Toque e fale de novo.');
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') setStatus(ui().micBlocked);
+      else if (e.error === 'no-speech') setStatus(ui().noSpeech);
     };
     rec.onend = () => {
       listening = false;
@@ -296,7 +320,7 @@
       input.value = '';
       const command = t.replace(WAKE, '').trim();
       if (command) routeSpeech(command);
-      else if (t) { setStatus('Sim? Estou ouvindo…'); beep(); setTimeout(listenOnce, 300); return; } // just "Buggy"
+      else if (t) { setStatus(ui().yesListening); beep(); setTimeout(listenOnce, 300); return; } // just "Buggy"
       else if (!busy) setStatus('');
       if (wakeMode) resumeListening();
     };
@@ -305,8 +329,8 @@
 
   function routeSpeech(text) {
     if (!card.hidden) {
-      if (/^(sim|yes|confirm|pode|ok|isso|claro|salva)/i.test(text)) return decide('yes', true);
-      if (/^(n[aã]o|no|cancel|para|esquece)/i.test(text)) return decide('no', true);
+      if (/^(sim|yes|yeah|yep|sure|confirm|go ahead|save|pode|ok|isso|claro|salva|כן|בטח|אשר|תשמור)(?=$|[\s,.!])/i.test(text)) return decide('yes', true);
+      if (/^(n[aã]o|no|nope|cancel|stop|para|esquece|לא|בטל|עזוב)(?=$|[\s,.!])/i.test(text)) return decide('no', true);
     }
     send(text, true);
   }
@@ -316,7 +340,7 @@
     stopAll();
     rec = makeRecognizer(true);
     rec.interimResults = false;
-    setStatus('Diga “Buggy” e o seu pedido…');
+    setStatus(ui().wakeHint);
     rec.onresult = (e) => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (!e.results[i].isFinal) continue;
@@ -326,14 +350,14 @@
         if (!m) continue;
         const command = said.slice(m.index + m[0].length).trim();
         if (command) { stopAll(); routeSpeech(command); }
-        else { awaitingCommand = true; setStatus('Sim? Estou ouvindo…'); beep(); }
+        else { awaitingCommand = true; setStatus(ui().yesListening); beep(); }
       }
     };
     rec.onerror = (e) => {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         wakeMode = false;
         wakeBox.checked = false;
-        setStatus('Permita o microfone para usar o “Hey Buggy”.');
+        setStatus(ui().wakeBlocked);
       }
     };
     rec.onend = () => { if (wakeMode && !speaking && !listening) setTimeout(startWake, 300); };
@@ -385,6 +409,7 @@
   // Lets Chrome offer "Install app", so the phone's assistant can open Buggy by name.
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
+  applyLanguage();
   scroll();
   if (!enabled) return;
   // Opened from a Siri / Google shortcut: start listening right away.

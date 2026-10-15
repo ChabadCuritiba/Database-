@@ -425,3 +425,35 @@ test('when every Flash model is busy, a Flash-Lite backup answers', async () => 
     server.close();
   }
 });
+
+test('Buggy answers in the language chosen on the page', async () => {
+  const { db, app } = setup();
+  const calls = fakeGemini([
+    callTool('create_contact', { family_name: 'Edward', email: 'edward@gmail.com' }),
+    callTool('create_contact', { family_name: 'Levi', members: [{ first_name: 'Dina', relation: 'spouse' }] }),
+  ]);
+  const { agent } = await buggyAgent(app, 'staff');
+  const send = (text, lang) => agent.post('/assistant/message').set('x-csrf-token', agent.csrfToken).send({ text, lang });
+
+  let res = await send('add Edward, edward@gmail.com', 'en-US');
+  assert.match(calls[0].system, /Always reply in English/);
+  assert.equal(res.body.reply, 'Create contact "Edward", email edward@gmail.com. Shall I save it?');
+  res = await send('yes', 'en-US');
+  assert.equal(res.body.reply, 'Done! Contact "Edward" created.');
+
+  res = await send('תוסיף את משפחת לוי עם דינה', 'he-IL');
+  assert.match(calls[1].system, /Always reply in Hebrew/);
+  assert.match(res.body.reply, /^ליצור איש קשר "Levi".*עם Dina \(בן\/בת זוג\)\. לשמור\?$/);
+  res = await send('כן', 'he-IL');
+  assert.equal(res.body.reply, 'בוצע! איש הקשר "Levi" נוצר.');
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name IN ('Edward', 'Levi')").get().n, 2);
+
+  // Cancelling and errors follow the language too.
+  fakeGemini([callTool('create_contact', { family_name: 'X' })]);
+  await send('add X', 'en-US');
+  res = await agent.post('/assistant/confirm').set('x-csrf-token', agent.csrfToken).send({ decision: 'no', lang: 'en-US' });
+  assert.equal(res.body.reply, 'OK, cancelled. Nothing was saved.');
+  gemini.generate = async () => { throw Object.assign(new Error('busy'), { busy: true }); };
+  res = await send('hello', 'en-US');
+  assert.match(res.body.error, /Google's servers are busy/);
+});

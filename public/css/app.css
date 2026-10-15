@@ -254,9 +254,3 @@ details > summary { cursor: pointer; }
 .bubble.progress li.done::before { content: '✓'; border: 0; animation: none; color: var(--ok); top: 1px; left: 3px; width: auto; height: auto; font-weight: 700; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Buggy: replay a reply aloud */
-.bubble .replay { border: 0; background: none; cursor: pointer; font-size: 0.95rem; padding: 0 0 0 6px; opacity: 0.55; vertical-align: baseline; }
-.bubble .replay:hover { opacity: 1; }
-.bubble.needs-tap .replay { opacity: 1; animation: pulse-replay 1.2s infinite; }
-.bubble.needs-tap::after { content: 'toque 🔊 para ouvir'; display: block; font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
-@keyframes pulse-replay { 50% { transform: scale(1.25); } }

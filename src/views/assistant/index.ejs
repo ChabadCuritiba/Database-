@@ -35,7 +35,7 @@
 
   <div class="chat" data-chat aria-live="polite">
     <% if (!history.length) { %>
-      <div class="bubble buggy-msg">Shalom! Eu sou o Buggy. Posso procurar contatos, adicionar pessoas, registrar doações e Yahrzeits. Por exemplo: “Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com”.</div>
+      <div class="bubble buggy-msg" data-welcome>Shalom! Eu sou o Buggy. Posso procurar contatos, adicionar pessoas, registrar doações e Yahrzeits. Por exemplo: “Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com”.</div>
     <% } %>
     <% for (const m of history) { %>
       <div class="bubble <%= m.who === 'me' ? 'me-msg' : 'buggy-msg' %>"><%= m.text %></div>

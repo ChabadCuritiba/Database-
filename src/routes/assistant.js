@@ -4,6 +4,7 @@ import { gemini } from '../lib/buggy/gemini.js';
 import { handleMessage, confirmPending, cancelPending, newState } from '../lib/buggy/agent.js';
 import { getSettings } from '../db/index.js';
 import { audit } from '../lib/audit.js';
+import { T, langOf } from '../lib/buggy/i18n.js';
 
 const router = express.Router();
 
@@ -69,21 +70,23 @@ function responder(req, res) {
 
 router.post('/message', async (req, res) => {
   const out = responder(req, res);
-  if (!gemini.enabled()) return out.fail(503, 'Buggy is not configured yet (GEMINI_API_KEY is missing).');
-  if (rateLimited(req.user.id)) return out.fail(429, 'Muitas mensagens seguidas. Espere um minuto.');
+  const t = T(req.body?.lang || state(req).lang);
+  if (!gemini.enabled()) return out.fail(503, t.notConfigured);
+  if (rateLimited(req.user.id)) return out.fail(429, t.tooMany);
   const db = req.app.get('db');
   try {
-    out.done(await handleMessage(db, req.user, state(req), req.body?.text, getSettings(db), out.step));
+    out.done(await handleMessage(db, req.user, state(req), req.body?.text, getSettings(db), out.step, req.body?.lang));
   } catch (e) {
     console.error('[buggy]', e);
-    out.fail(502, e.busy ? e.message : `Buggy não conseguiu responder agora. (${e.message})`);
+    out.fail(502, e.busy ? t.busy : t.error(e.message));
   }
 });
 
 router.post('/confirm', async (req, res) => {
   const db = req.app.get('db');
   const s = state(req);
-  if (!s.pending.length) return res.json({ reply: 'Não há nada esperando confirmação.', pending: [] });
+  if (req.body?.lang) s.lang = langOf(req.body.lang);
+  if (!s.pending.length) return res.json({ reply: T(s.lang).nothingPending, pending: [] });
   const result = req.body?.decision === 'yes' ? await confirmPending(db, req.user, s, () => {}) : cancelPending(s);
   res.json(result);
 });

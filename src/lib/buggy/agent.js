@@ -3,32 +3,33 @@
 import { gemini } from './gemini.js';
 import { toolsFor, declarations, findTool, ToolError } from './tools.js';
 import { toHebrew, formatHebrew, todayISO } from '../hebrew.js';
+import { T, langOf, LANGUAGE_NAME } from './i18n.js';
 
 const MAX_ROUNDS = 8;
 const MAX_CONTENTS = 40;
 
-const YES = /^(sim|s|yes|y|confirmo|confirma|confirmar|confirmado|pode|pode sim|ok|okay|isso|claro|beleza|correto|certo|manda|faz)\b/i;
-const NO = /^(n[aã]o|no|nope|cancela|cancelar|cancel|para|pare|esquece)\b/i;
+const YES = /^(sim|s|yes|y|yeah|yep|sure|save it|go ahead|confirmo|confirma|confirmar|confirmado|pode|pode sim|ok|okay|isso|claro|beleza|correto|certo|manda|faz|כן|בטח|אשר|תשמור)(?=$|[\s,.!])/i;
+const NO = /^(n[aã]o|no|nope|cancela|cancelar|cancel|stop|para|pare|esquece|לא|בטל|עזוב)(?=$|[\s,.!])/i;
 
 export const isYes = (t) => t.trim().length <= 40 && YES.test(t.trim());
 export const isNo = (t) => t.trim().length <= 40 && NO.test(t.trim());
 
 export function newState() {
-  return { contents: [], pending: [] };
+  return { contents: [], pending: [], lang: 'pt' };
 }
 
-function systemPrompt(user, settings) {
+function systemPrompt(user, settings, lang) {
   const today = todayISO();
   const h = formatHebrew(toHebrew(today));
   return [
     `You are Buggy, the friendly assistant inside the contact-management system of ${settings.org_name || 'a Chabad house'}.`,
     `You are talking with ${user.name || user.email} (role: ${user.role}). Today is ${today} (${h.en}).`,
-    'Reply in the language the user speaks (usually Brazilian Portuguese). Your replies are read aloud: keep them short and natural,',
+    `Always reply in ${LANGUAGE_NAME[lang]}, whatever language earlier messages used. Your replies are read aloud: keep them short and natural,`,
     'one to three sentences, plain text without markdown, lists or emojis. Say amounts like "cento e oitenta reais" only if natural.',
     'Use the tools to look things up and to make changes. Never invent contacts, ids, emails, dates or amounts.',
     'To act on an existing contact, search for it first; if a search returns several matches, ask which one. create_contact checks for duplicates itself.',
     'Spell emails exactly as the user said them; if an email or name spelling is unclear, ask.',
-    'Changes are not saved until the user confirms: after calling a change tool, tell the user exactly what will be done and ask "Confirma?".',
+    'Changes are not saved until the user confirms: after calling a change tool, tell the user exactly what will be done and ask them to confirm.',
     'Never say a change was made unless the system told you it was confirmed.',
     'If the user asks for something no tool can do, say so briefly.',
   ].join('\n');
@@ -74,29 +75,32 @@ export async function confirmPending(db, user, state, onStep = () => {}) {
     const { tool, error } = findTool(user, p.tool);
     if (error) { failed.push(`${p.summary}: ${error}`); continue; }
     try {
-      done.push(tool.execute(db, user, p.args));
+      done.push(tool.execute(db, user, p.args, state.lang));
     } catch (e) {
       failed.push(`${p.summary}: ${e.message}`);
     }
   }
   state.pending = [];
-  const reply = [done.map((d) => d.message).join(' '), failed.length ? `Não consegui: ${failed.join('; ')}.` : ''].filter(Boolean).join(' ') || 'Nada a fazer.';
-  note(state, `O usuário confirmou. Resultado: ${JSON.stringify(done.map((d) => ({ message: d.message, family_id: d.family_id })))}${failed.length ? ` Falhas: ${failed.join('; ')}` : ''}`, `Pronto! ${reply}`);
-  return { reply: `Pronto! ${reply}`, links: done.filter((d) => d.link).map((d) => ({ href: d.link, label: d.message })), pending: [] };
+  const t = T(state.lang);
+  const reply = [done.map((d) => d.message).join(' '), failed.length ? `${t.failed}: ${failed.join('; ')}.` : ''].filter(Boolean).join(' ') || t.nothing;
+  note(state, `O usuário confirmou. Resultado: ${JSON.stringify(done.map((d) => ({ message: d.message, family_id: d.family_id })))}${failed.length ? ` Falhas: ${failed.join('; ')}` : ''}`, `${t.done} ${reply}`);
+  return { reply: `${t.done} ${reply}`, links: done.filter((d) => d.link).map((d) => ({ href: d.link, label: d.message })), pending: [] };
 }
 
 export function cancelPending(state, reason = 'O usuário cancelou') {
-  if (!state.pending.length) return { reply: 'Ok.', pending: [] };
+  if (!state.pending.length) return { reply: 'OK.', pending: [] };
   const what = state.pending.map((p) => p.summary).join('; ');
   state.pending = [];
-  const reply = 'Ok, cancelado. Nada foi salvo.';
+  const reply = T(state.lang).cancelled;
   note(state, `${reason}: ${what}. Nada foi salvo.`, reply);
   return { reply, pending: [] };
 }
 
-export async function handleMessage(db, user, state, text, settings = {}, onStep = () => {}) {
+export async function handleMessage(db, user, state, text, settings = {}, onStep = () => {}, lang) {
+  if (lang) state.lang = langOf(lang);
+  state.lang ||= 'pt';
   text = String(text || '').trim().slice(0, 2000);
-  if (!text) return { reply: 'Não ouvi nada. Pode repetir?', pending: state.pending };
+  if (!text) return { reply: T(state.lang).empty, pending: state.pending };
 
   if (state.pending.length) {
     if (isYes(text)) return confirmPending(db, user, state, onStep);
@@ -124,7 +128,7 @@ async function converse(db, user, state, settings, onStep) {
   for (let round = 0; round < MAX_ROUNDS; round++) {
     trim(state.contents);
     onStep('thinking');
-    const content = await gemini.generate({ system: systemPrompt(user, settings), contents: state.contents, tools: decls });
+    const content = await gemini.generate({ system: systemPrompt(user, settings, state.lang), contents: state.contents, tools: decls });
     state.contents.push(content);
     const calls = content.parts.filter((p) => p.functionCall);
     if (!calls.length) {
@@ -141,7 +145,7 @@ async function converse(db, user, state, settings, onStep) {
         try {
           if (tool.kind === 'read') response = { result: tool.run(db, user, fc.args || {}) };
           else {
-            const prepared = tool.prepare(db, user, fc.args || {});
+            const prepared = tool.prepare(db, user, fc.args || {}, state.lang);
             if (prepared.warning) {
               response = { status: 'not_proposed', warning: prepared.warning };
             } else {
@@ -165,10 +169,10 @@ async function converse(db, user, state, settings, onStep) {
     if (proposed && !needsModel) {
       // Every call was a change ready for confirmation: ask the user directly
       // instead of waiting for the model to phrase it (saves a full round trip).
-      const reply = `${state.pending.map((p) => p.summary).join('. ')}. Confirma?`;
+      const reply = `${state.pending.map((p) => p.summary).join('. ')}. ${T(state.lang).confirm}`;
       state.contents.push({ role: 'model', parts: [{ text: reply }] });
       return { reply, pending: state.pending.map((p) => ({ summary: p.summary })) };
     }
   }
-  return { reply: 'Desculpe, me enrolei com esse pedido. Pode dizer de outro jeito?', pending: state.pending.map((p) => ({ summary: p.summary })) };
+  return { reply: T(state.lang).lost, pending: state.pending.map((p) => ({ summary: p.summary })) };
 }

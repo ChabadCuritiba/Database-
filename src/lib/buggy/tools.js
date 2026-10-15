@@ -7,11 +7,10 @@ import { upcomingOccasions } from '../occasions.js';
 import { nextOccurrence, toHebrew, formatHebrew, fromHebrew, todayISO, HEBREW_MONTHS, OCCASION_LABELS } from '../hebrew.js';
 import { formatMoney, parseMoney, salutationOf, formatAddress } from '../format.js';
 import { audit } from '../audit.js';
+import { T } from './i18n.js';
 
 const RELATIONS = ['primary', 'spouse', 'child', 'parent', 'other'];
-const RELATION_PT = { primary: 'titular', spouse: 'cônjuge', child: 'filho(a)', parent: 'pai/mãe', other: 'outro' };
 const METHODS = ['cash', 'check', 'pix', 'card', 'transfer', 'other'];
-const METHOD_PT = { cash: 'dinheiro', check: 'cheque', pix: 'PIX', card: 'cartão', transfer: 'transferência', other: 'outro' };
 const OCCASION_TYPES = Object.keys(OCCASION_LABELS);
 
 class ToolError extends Error {}
@@ -137,7 +136,7 @@ export const TOOLS = [
       },
       required: ['family_name'],
     },
-    prepare(db, user, a) {
+    prepare(db, user, a, lang) {
       const v = {
         family_name: clean(a.family_name) || fail('family_name is required'),
         first_name: clean(a.first_name), salutation: clean(a.salutation), email: clean(a.email)?.toLowerCase() || null,
@@ -153,13 +152,7 @@ export const TOOLS = [
       for (const q of [v.family_name, v.first_name].filter(Boolean)) {
         for (const f of findFamilies(db, { q }, { limit: 5 }).rows) similar.set(f.id, f);
       }
-      const parts = [`Criar contato "${v.family_name}"`];
-      if (v.first_name) parts.push(`titular ${v.first_name}`);
-      if (v.email) parts.push(`email ${v.email}`);
-      if (v.mobile) parts.push(`celular ${v.mobile}`);
-      if (v.city) parts.push(`cidade ${v.city}`);
-      for (const m of v.members) parts.push(`com ${m.first_name}${m.last_name ? ` ${m.last_name}` : ''} (${RELATION_PT[m.relation]})`);
-      const out = { args: v, summary: parts.join(', ') };
+      const out = { args: v, summary: T(lang).createContact(v) };
       if (similar.size && !a.confirmed_new) {
         out.warning = {
           message: 'Similar contacts already exist. Ask the user whether one of them is the same person (then use it) or whether to create a new contact anyway (then call create_contact again with confirmed_new: true).',
@@ -168,7 +161,7 @@ export const TOOLS = [
       }
       return out;
     },
-    execute(db, user, v) {
+    execute(db, user, v, lang) {
       const id = db.transaction(() => {
         const fid = Number(db.prepare('INSERT INTO families (family_name, salutation, email, mobile, phone, city, notes, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
           .run(v.family_name, v.salutation, v.email, v.mobile, v.phone, v.city, v.notes, 'Buggy').lastInsertRowid);
@@ -178,7 +171,7 @@ export const TOOLS = [
         return fid;
       })();
       audit(db, user, 'create', 'family', id, 'via Buggy');
-      return { message: `Contato "${v.family_name}" criado.`, link: `/families/${id}`, family_id: id };
+      return { message: T(lang).created(v.family_name), link: `/families/${id}`, family_id: id };
     },
   },
   {
@@ -195,20 +188,20 @@ export const TOOLS = [
       },
       required: ['family_id', 'first_name', 'relation'],
     },
-    prepare(db, user, a) {
+    prepare(db, user, a, lang) {
       const f = family(db, a.family_id);
       const v = {
         family_id: f.id, first_name: clean(a.first_name) || fail('first_name is required'), last_name: clean(a.last_name) || f.family_name,
         relation: RELATIONS.includes(a.relation) ? a.relation : 'other', birth_date: isoDate(a.birth_date),
         email: clean(a.email), mobile: clean(a.mobile), hebrew_name: clean(a.hebrew_name),
       };
-      return { args: v, summary: `Adicionar ${v.first_name} ${v.last_name} (${RELATION_PT[v.relation]}) à família ${f.family_name}${v.birth_date ? `, nascido(a) em ${v.birth_date}` : ''}` };
+      return { args: v, summary: T(lang).addMember(v, f.family_name) };
     },
-    execute(db, user, v) {
+    execute(db, user, v, lang) {
       const id = db.prepare('INSERT INTO people (family_id, relation, first_name, last_name, birth_date, email, mobile, hebrew_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
         .run(v.family_id, v.relation, v.first_name, v.last_name, v.birth_date, v.email, v.mobile, v.hebrew_name).lastInsertRowid;
       audit(db, user, 'create', 'person', id, 'via Buggy');
-      return { message: `${v.first_name} adicionado(a).`, link: `/families/${v.family_id}` };
+      return { message: T(lang).memberAdded(v.first_name), link: `/families/${v.family_id}` };
     },
   },
   {
@@ -225,19 +218,19 @@ export const TOOLS = [
       },
       required: ['family_id'],
     },
-    prepare(db, user, a) {
+    prepare(db, user, a, lang) {
       const f = family(db, a.family_id);
       const fields = ['email', 'mobile', 'phone', 'street', 'number', 'complement', 'neighborhood', 'city', 'state', 'cep'];
       const changes = {};
       for (const k of fields) if (clean(a[k])) changes[k] = k === 'cep' ? clean(a[k]).replace(/\D/g, '') : clean(a[k]);
       if (!Object.keys(changes).length) fail('Nothing to change was given.');
-      return { args: { family_id: f.id, changes }, summary: `Atualizar ${f.family_name}: ${Object.entries(changes).map(([k, v]) => `${k} = ${v}`).join(', ')}` };
+      return { args: { family_id: f.id, changes }, summary: T(lang).update(f.family_name, changes) };
     },
-    execute(db, user, { family_id, changes }) {
+    execute(db, user, { family_id, changes }, lang) {
       const keys = Object.keys(changes);
       db.prepare(`UPDATE families SET ${keys.map((k) => `${k} = ?`).join(', ')}, updated_at = datetime('now') WHERE id = ?`).run(...keys.map((k) => changes[k]), family_id);
       audit(db, user, 'update', 'family', family_id, { fields: keys, via: 'Buggy' });
-      return { message: 'Contato atualizado.', link: `/families/${family_id}` };
+      return { message: T(lang).updated, link: `/families/${family_id}` };
     },
   },
   {
@@ -254,18 +247,18 @@ export const TOOLS = [
       },
       required: ['amount'],
     },
-    prepare(db, user, a) {
+    prepare(db, user, a, lang) {
       const f = a.family_id ? family(db, a.family_id) : null;
       const amount = typeof a.amount === 'number' ? Math.round(a.amount * 100) : parseMoney(a.amount);
       if (!(amount > 0)) fail('A positive amount is required.');
       const fund = findFund(db, a.fund);
       const v = { family_id: f?.id ?? null, amount, fund_id: fund.id, method: METHODS.includes(a.method) ? a.method : 'pix', date: isoDate(a.date) || todayISO(), notes: clean(a.notes) };
-      return { args: v, summary: `Registrar doação de ${formatMoney(amount)} de ${f ? f.family_name : 'doador anônimo'}, fundo ${fund.name}, via ${METHOD_PT[v.method]}, em ${v.date}` };
+      return { args: v, summary: T(lang).donation(v, f?.family_name, fund.name) };
     },
-    execute(db, user, v) {
+    execute(db, user, v, lang) {
       const id = recordDonation(db, { familyId: v.family_id, date: v.date, method: v.method, notes: v.notes, userId: user.id, splits: [{ fundId: v.fund_id, amount: v.amount }] });
       audit(db, user, 'create', 'donation', id, 'via Buggy');
-      return { message: `Doação de ${formatMoney(v.amount)} registrada.`, link: `/finance/donations/${id}` };
+      return { message: T(lang).donationSaved(v.amount), link: `/finance/donations/${id}` };
     },
   },
   {
@@ -283,7 +276,7 @@ export const TOOLS = [
       },
       required: ['family_id', 'type', 'name'],
     },
-    prepare(db, user, a) {
+    prepare(db, user, a, lang) {
       const f = family(db, a.family_id);
       let date = isoDate(a.date);
       let afterSunset = !!a.after_sunset;
@@ -300,14 +293,14 @@ export const TOOLS = [
       const next = nextOccurrence({ ...v, observe: 'hebrew' });
       return {
         args: v,
-        summary: `Adicionar ${OCCASION_LABELS[v.type]} de ${v.name} (${date} = ${h.en}) à família ${f.family_name}${next ? `. Próxima data: ${next.date} (${next.hebrew.en})` : ''}`,
+        summary: T(lang).occasion(v, f.family_name, h.en, next && { date: next.date, hebrew: next.hebrew.en }),
       };
     },
-    execute(db, user, v) {
+    execute(db, user, v, lang) {
       const id = db.prepare(`INSERT INTO occasions (family_id, type, name, hebrew_name, relationship, gregorian_date, after_sunset, remind_days_before)
         VALUES (?, ?, ?, ?, ?, ?, ?, 7)`).run(v.family_id, v.type, v.name, v.hebrew_name, v.relationship, v.gregorian_date, v.after_sunset).lastInsertRowid;
       audit(db, user, 'create', 'occasion', id, 'via Buggy');
-      return { message: `${OCCASION_LABELS[v.type]} de ${v.name} adicionado(a).`, link: `/families/${v.family_id}` };
+      return { message: T(lang).occasionAdded(v.type, v.name), link: `/families/${v.family_id}` };
     },
   },
 ];
