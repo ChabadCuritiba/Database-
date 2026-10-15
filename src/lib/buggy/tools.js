@@ -185,6 +185,7 @@ export const TOOLS = [
   {
     name: 'add_family_member',
     kind: 'write',
+    autoSave: true, // saved right away unless someone with that first name is already in the family
     permission: 'contacts.write',
     description: 'Add a person (spouse, child, parent...) to an existing contact.',
     parameters: {
@@ -193,6 +194,7 @@ export const TOOLS = [
         family_id: N('Contact id'), first_name: S('First name'), last_name: S('Last name'),
         relation: S('Relation to the family', { enum: RELATIONS }), birth_date: S('Birth date YYYY-MM-DD'),
         email: S('Email'), mobile: S('Mobile phone'), hebrew_name: S('Hebrew name'),
+        confirmed_new: { type: 'boolean', description: 'True only after the user said to add the person even though someone with that name is already in the family' },
       },
       required: ['family_id', 'first_name', 'relation'],
     },
@@ -203,13 +205,21 @@ export const TOOLS = [
         relation: RELATIONS.includes(a.relation) ? a.relation : 'other', birth_date: isoDate(a.birth_date),
         email: clean(a.email), mobile: clean(a.mobile), hebrew_name: clean(a.hebrew_name),
       };
-      return { args: v, summary: T(lang).addMember(v, f.family_name) };
+      const out = { args: v, summary: T(lang).addMember(v, f.family_name) };
+      const same = db.prepare('SELECT id, first_name, last_name, relation FROM people WHERE family_id = ? AND first_name = ? COLLATE NOCASE').get(f.id, v.first_name);
+      if (same && !a.confirmed_new) {
+        out.warning = {
+          message: `${f.family_name} already has a person named ${same.first_name}. Ask the user whether it is the same person or whether to add another one anyway (then call add_family_member again with confirmed_new: true).`,
+          existing: same,
+        };
+      }
+      return out;
     },
     execute(db, user, v, lang) {
       const id = db.prepare('INSERT INTO people (family_id, relation, first_name, last_name, birth_date, email, mobile, hebrew_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
         .run(v.family_id, v.relation, v.first_name, v.last_name, v.birth_date, v.email, v.mobile, v.hebrew_name).lastInsertRowid;
       audit(db, user, 'create', 'person', id, 'via Buggy');
-      return { message: T(lang).memberAdded(v.first_name), link: `/families/${v.family_id}` };
+      return { message: T(lang).memberAdded(v.first_name, family(db, v.family_id).family_name), link: `/families/${v.family_id}` };
     },
   },
   {

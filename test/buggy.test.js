@@ -504,3 +504,23 @@ test('a normal question is not nudged', async () => {
   assert.match(res.body.reply, /Which Cohen/);
   assert.equal(calls.length, 1);
 });
+
+test('add_family_member saves right away, and asks only when the name is already in the family', async () => {
+  const { db, app } = setup();
+  const fid = createFamily(db, { family_name: 'Stolik' });
+  db.prepare("INSERT INTO people (family_id, relation, first_name) VALUES (?, 'primary', 'Moshe')").run(fid);
+  const calls = fakeGemini([
+    callTool('add_family_member', { family_id: fid, first_name: 'Yeho', relation: 'child' }),
+    callTool('add_family_member', { family_id: fid, first_name: 'moshe', relation: 'child' }),
+    say('Stolik already has a Moshe. Is it the same person?'),
+  ]);
+  const { agent } = await buggyAgent(app, 'staff');
+  let res = await chat(agent, 'Add yeho to stolik family', 'en-US');
+  assert.equal(res.body.pending.length, 0);
+  assert.match(res.body.reply, /Yeho added to the Stolik family/);
+  assert.equal(db.prepare("SELECT relation FROM people WHERE family_id = ? AND first_name = 'Yeho'").get(fid).relation, 'child');
+  res = await chat(agent, 'Add Moshe to the Stolik family', 'en-US');
+  assert.equal(res.body.pending.length, 0);
+  assert.ok(calls[2].contents.at(-1).parts[0].functionResponse.response.warning);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM people WHERE family_id = ? AND first_name = 'Moshe' COLLATE NOCASE").get(fid).n, 1);
+});

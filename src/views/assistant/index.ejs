@@ -10,7 +10,7 @@
       <label class="inline small" title="Escutar sempre e responder quando ouvir “Buggy”">
         <input type="checkbox" data-wake> “Hey Buggy”
       </label>
-      <label class="inline small">Voz:
+      <label class="inline small"><span data-voice-label>Voz:</span>
         <select data-speak aria-label="Quando o Buggy responde falando">
           <option value="voice">quando eu falar</option>
           <option value="always">sempre</option>
@@ -56,7 +56,7 @@
       <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg>
     </button>
     <input type="text" data-input placeholder="Escreva para o Buggy…" autocomplete="off" <%= enabled ? '' : 'disabled' %>>
-    <button class="btn" <%= enabled ? '' : 'disabled' %>>Enviar</button>
+    <button class="btn" data-send <%= enabled ? '' : 'disabled' %>>Enviar</button>
   </form>
 
   <details class="card shortcut-help">

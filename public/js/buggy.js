@@ -37,19 +37,22 @@
       micBlocked: 'Permita o microfone (toque no ícone à esquerda do endereço).', noSpeech: 'Não ouvi nada. Toque e fale de novo.',
       yesListening: 'Sim? Estou ouvindo…', wakeHint: 'Diga “Buggy” e o seu pedido…', wakeBlocked: 'Permita o microfone para usar o “Hey Buggy”.',
       welcome: 'Shalom! Eu sou o Buggy. Posso procurar contatos, adicionar pessoas, registrar doações e Yahrzeits. Por exemplo: “Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com”.',
-      offline: 'Sem conexão com o servidor.', dropped: 'A conexão caiu antes da resposta. Tente de novo.', newChat: 'Nova conversa. Como posso ajudar?' },
+      offline: 'Sem conexão com o servidor.', dropped: 'A conexão caiu antes da resposta. Tente de novo.', newChat: 'Nova conversa. Como posso ajudar?',
+      send: 'Enviar', voice: 'Voz:', reset: 'Nova conversa', speak: ['quando eu falar', 'sempre', 'nunca'] },
     'en-US': { open: 'Open', confirmTitle: 'Confirm?', yes: '✓ Yes, save', no: 'Cancel', yesWord: 'Yes', noWord: 'No', placeholder: 'Write to Buggy…',
       sayYes: 'Say “yes” to save or “no” to cancel.', tapYes: 'Tap “Yes, save” or “Cancel”.', listening: 'Listening…',
       micBlocked: 'Allow the microphone (tap the icon left of the address).', noSpeech: "I didn't hear anything. Tap and speak again.",
       yesListening: "Yes? I'm listening…", wakeHint: 'Say “Buggy” and your request…', wakeBlocked: 'Allow the microphone to use “Hey Buggy”.',
       welcome: 'Shalom! I am Buggy. I can find contacts, add people, record donations and Yahrzeits. For example: “Add Joseli and Dimini to the contacts, email joseli@gmail.com”.',
-      offline: 'No connection to the server.', dropped: 'The connection dropped before the answer. Please try again.', newChat: 'New conversation. How can I help?' },
+      offline: 'No connection to the server.', dropped: 'The connection dropped before the answer. Please try again.', newChat: 'New conversation. How can I help?',
+      send: 'Send', voice: 'Voice:', reset: 'New conversation', speak: ['when I speak', 'always', 'never'] },
     'he-IL': { open: 'פתח', confirmTitle: 'לאשר?', yes: '✓ כן, לשמור', no: 'ביטול', yesWord: 'כן', noWord: 'לא', placeholder: 'כתוב לבאגי…',
       sayYes: 'אמור “כן” כדי לשמור או “לא” כדי לבטל.', tapYes: 'הקש “כן, לשמור” או “ביטול”.', listening: 'מקשיב…',
       micBlocked: 'אשר גישה למיקרופון (הקש על הסמל משמאל לכתובת).', noSpeech: 'לא שמעתי כלום. הקש ודבר שוב.',
       yesListening: 'כן? אני מקשיב…', wakeHint: 'אמור “באגי” ואת הבקשה שלך…', wakeBlocked: 'אשר גישה למיקרופון כדי להשתמש ב“Hey Buggy”.',
       welcome: 'שלום! אני באגי. אני יכול לחפש אנשי קשר, להוסיף אנשים, לרשום תרומות ויארצייטים. לדוגמה: “תוסיף את יוסי כהן לאנשי הקשר, אימייל yossi@gmail.com”.',
-      offline: 'אין חיבור לשרת.', dropped: 'החיבור נותק לפני התשובה. נסה שוב.', newChat: 'שיחה חדשה. איך אפשר לעזור?' },
+      offline: 'אין חיבור לשרת.', dropped: 'החיבור נותק לפני התשובה. נסה שוב.', newChat: 'שיחה חדשה. איך אפשר לעזור?',
+      send: 'שלח', voice: 'קול:', reset: 'שיחה חדשה', speak: ['כשאני מדבר', 'תמיד', 'אף פעם'] },
   };
   const ui = () => UI[langSel.value] || UI['pt-BR'];
   function applyLanguage() {
@@ -59,6 +62,10 @@
     $('[data-yes]').textContent = u.yes;
     $('[data-no]').textContent = u.no;
     input.placeholder = u.placeholder;
+    $('[data-send]').textContent = u.send;
+    $('[data-voice-label]').textContent = u.voice;
+    $('[data-reset]').textContent = u.reset;
+    [...$('[data-speak]').options].forEach((o, n) => { o.textContent = u.speak[n]; });
     const welcome = chat.querySelector('[data-welcome]');
     if (welcome) welcome.textContent = u.welcome;
     chat.dir = langSel.value === 'he-IL' ? 'auto' : '';
