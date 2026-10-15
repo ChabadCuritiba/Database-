@@ -10,7 +10,7 @@ import { getSettings } from './db/index.js';
 import { SqliteStore } from './lib/sessionStore.js';
 import { csrf } from './lib/csrf.js';
 import { can, requireLogin } from './lib/permissions.js';
-import { formatMoney, formatAddress, formatCep, salutationOf } from './lib/format.js';
+import { formatMoney, formatAddress, formatCep, salutationOf, RELATION_LABELS, RELATIONSHIP_SUGGESTIONS } from './lib/format.js';
 import { formatHebrew, toHebrew, OCCASION_LABELS } from './lib/hebrew.js';
 import { setupAuth, authRoutes } from './routes/auth.js';
 import publicRoutes from './routes/public.js';
@@ -93,7 +93,7 @@ export function createApp(db) {
       settings,
       path: req.path,
       flash: req.session.flash || [],
-      formatMoney, formatAddress, formatCep, salutationOf, formatHebrew, toHebrew, OCCASION_LABELS,
+      formatMoney, formatAddress, formatCep, salutationOf, formatHebrew, toHebrew, OCCASION_LABELS, RELATION_LABELS, RELATIONSHIP_SUGGESTIONS,
       title: '',
     });
     delete req.session.flash;

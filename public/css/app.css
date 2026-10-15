@@ -95,6 +95,8 @@ legend { font-weight: 600; padding: 0 6px; }
 .filters-inline label { display: flex; flex-direction: column; font-size: 0.86rem; color: var(--muted); }
 .filters-inline label.inline { flex-direction: row; }
 .filters summary { cursor: pointer; font-weight: 600; }
+.add-picker { display: inline-flex; gap: 6px; align-items: center; margin-left: 8px; vertical-align: middle; font-size: 1rem; font-weight: normal; }
+.add-picker select { width: auto; padding: 4px 8px; }
 .inline-form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 form.inline { display: inline; }
 .catlist { display: flex; flex-wrap: wrap; gap: 4px 0; margin: 6px 0 10px; }

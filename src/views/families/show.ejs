@@ -47,14 +47,23 @@
 </div>
 
 <section class="card">
-  <h2>Family members <% if (can('contacts.write')) { %><a class="btn btn-small btn-light" href="/families/<%= family.id %>/people/new">+ Add person</a><% } %></h2>
+  <h2>Family members
+    <% if (can('contacts.write')) { %>
+      <form method="get" action="/families/<%= family.id %>/people/new" class="add-picker">
+        <select name="relation" aria-label="Type of person">
+          <% for (const [r, label] of Object.entries(RELATION_LABELS)) { %><option value="<%= r %>" <%= r === (people.length ? 'child' : 'primary') ? 'selected' : '' %>><%= label %></option><% } %>
+        </select>
+        <button class="btn btn-small btn-light">+ Add</button>
+      </form>
+    <% } %>
+  </h2>
   <table class="table">
     <thead><tr><th>Name</th><th>Hebrew name</th><th>Relation</th><th>Born</th><th>Contact</th><th></th></tr></thead>
     <% for (const p of people) { %>
     <tr class="<%= p.deceased ? 'deceased' : '' %>">
       <td><%= p.first_name %> <%= p.last_name %><%= p.deceased ? ' ז״ל' : '' %></td>
       <td dir="auto"><%= p.hebrew_name %><% if (p.father_hebrew_name) { %> <%= p.gender === 'F' ? 'בת' : 'בן' %> <%= p.father_hebrew_name %><% } %><% if (p.lineage && p.lineage !== 'yisrael') { %> <span class="tag"><%= p.lineage %></span><% } %></td>
-      <td><%= p.relation %></td>
+      <td><%= RELATION_LABELS[p.relation] || p.relation %></td>
       <td><% if (p.birth_date) { %><%= p.birth_date %><div class="small muted"><%= formatHebrew(toHebrew(p.birth_date, p.birth_after_sunset)).en %></div><% } %></td>
       <td class="small"><%= p.email %><br><%= p.mobile %></td>
       <td><% if (can('contacts.write')) { %><a href="/families/<%= family.id %>/people/<%= p.id %>/edit">edit</a><% } %></td>
@@ -66,9 +75,13 @@
 <section class="card">
   <h2>Occasions & Yahrzeits
     <% if (can('occasions.write')) { %>
-      <a class="btn btn-small btn-light" href="/occasions/new?family_id=<%= family.id %>&type=yahrzeit">+ Yahrzeit</a>
-      <a class="btn btn-small btn-light" href="/occasions/new?family_id=<%= family.id %>&type=anniversary">+ Anniversary</a>
-      <a class="btn btn-small btn-light" href="/occasions/new?family_id=<%= family.id %>&type=birthday">+ Other</a>
+      <form method="get" action="/occasions/new" class="add-picker">
+        <input type="hidden" name="family_id" value="<%= family.id %>">
+        <select name="type" aria-label="Type of occasion">
+          <% for (const [t, label] of Object.entries(OCCASION_LABELS)) { %><option value="<%= t %>"><%= label %></option><% } %>
+        </select>
+        <button class="btn btn-small btn-light">+ Add</button>
+      </form>
     <% } %>
   </h2>
   <table class="table">

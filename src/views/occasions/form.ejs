@@ -7,7 +7,9 @@
     <label>Type<select name="type"><% for (const t of types) { %><option value="<%= t %>" <%= occasion.type === t ? 'selected' : '' %>><%= OCCASION_LABELS[t] %></option><% } %></select></label>
     <label>Name *<input name="name" value="<%= occasion.name %>" required placeholder="e.g. Avraham Cohen"></label>
     <label>Hebrew name<input name="hebrew_name" value="<%= occasion.hebrew_name %>" dir="auto" placeholder="אברהם בן יצחק"></label>
-    <label>Relationship<input name="relationship" value="<%= occasion.relationship %>" placeholder="father of Moshe"></label>
+    <label>Relationship<input name="relationship" value="<%= occasion.relationship %>" list="relationship-options" placeholder="Pick or type, e.g. Father" autocomplete="off">
+      <datalist id="relationship-options"><% for (const r of RELATIONSHIP_SUGGESTIONS) { %><option value="<%= r %>"><% } %></datalist>
+    </label>
     <label>Linked person
       <select name="person_id"><option value="">–</option><% for (const p of people) { %><option value="<%= p.id %>" <%= occasion.person_id === p.id ? 'selected' : '' %>><%= p.first_name %> <%= p.last_name %></option><% } %></select>
     </label>

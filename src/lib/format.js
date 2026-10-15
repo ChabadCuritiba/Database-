@@ -60,3 +60,16 @@ export function formatCep(cep) {
 export function salutationOf(f) {
   return f.salutation || `Família ${f.family_name}`;
 }
+
+/** Labels for a family member's place in the family (people.relation). */
+export const RELATION_LABELS = {
+  primary: 'Main contact',
+  spouse: 'Spouse',
+  child: 'Child',
+  parent: 'Parent',
+  other: 'Other',
+};
+
+/** Suggestions for an occasion's relationship field (free text, so others can be typed). */
+export const RELATIONSHIP_SUGGESTIONS = ['Father', 'Mother', 'Husband', 'Wife', 'Son', 'Daughter', 'Brother', 'Sister',
+  'Grandfather', 'Grandmother', 'Father-in-law', 'Mother-in-law', 'Uncle', 'Aunt', 'Friend', 'Self'];
