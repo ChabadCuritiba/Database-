@@ -52,12 +52,12 @@ The app now starts by itself whenever the VM reboots, and HTTPS (the padlock) is
 
 The online version only allows sign-in with Google, so this step is required.
 
-1. Google Cloud Console → Menu ☰ → **APIs & Services** → **OAuth consent screen**.
-   - User type: **Internal** if you use Google Workspace (only your organization's accounts can sign in), otherwise **External**.
-   - App name: e.g. "Beit Chabad CRM"; support email: yours → Save.
-2. **APIs & Services** → **Credentials** → **Create credentials** → **OAuth client ID**.
+1. Google Cloud Console → Menu ☰ → **APIs & Services** → **OAuth consent screen**. Google now calls this **Google Auth Platform**.
+   - **Branding:** app name (e.g. "Beit Chabad CRM"), user support email and developer contact email → **Save**.
+   - **Audience:** **Internal** if offered (only your Google Workspace accounts can sign in). Otherwise **External** → **Publish app**. The CRM still admits only invited users.
+2. **Clients** → **+ Create client**.
    - Application type: **Web application**
-   - **Authorized redirect URIs** → Add: `https://crm.chabadcuritiba.com/auth/google/callback`, using your address
+   - **Authorized redirect URIs** → **+ Add URI**: `https://crm.chabadcuritiba.com/auth/google/callback`, using your address
    - **Create**, then copy the **Client ID** and **Client secret**.
 3. Back in the SSH window, run:
 
