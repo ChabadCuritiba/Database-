@@ -351,3 +351,37 @@ test('progress steps are streamed while Buggy works, then the result', async () 
   assert.match(yes.body.reply, /Pronto/);
   assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name = 'Novo'").get().n, 1);
 });
+
+test('a retired Gemini model is skipped and the replacement Google suggests is used', async () => {
+  const hits = [];
+  const server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => {
+      hits.push(req.url);
+      res.setHeader('content-type', 'application/json');
+      if (req.url.startsWith('/models?')) return res.end(JSON.stringify({ models: [{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] }] }));
+      if (req.url.includes('gemini-2.5-flash')) {
+        res.statusCode = 404;
+        return res.end(JSON.stringify({ error: { code: 404, message: 'This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use models/gemini-3.8-flash for the latest features.' } }));
+      }
+      res.end(JSON.stringify({ candidates: [{ content: { role: 'model', parts: [{ text: 'olá' }] } }] }));
+    });
+  });
+  await new Promise((r) => server.listen(0, r));
+  const saved = { ...config.gemini };
+  // The configured model is the retired one, as in a real setup.
+  Object.assign(config.gemini, { apiKey: 'k', model: 'gemini-2.5-flash', baseUrl: `http://127.0.0.1:${server.address().port}` });
+  try {
+    const mod = await import(`../src/lib/buggy/gemini.js?retired=${Date.now()}`);
+    const req = { system: 's', contents: [{ role: 'user', parts: [{ text: 'oi' }] }], tools: [] };
+    assert.equal((await mod.gemini.generate(req)).parts[0].text, 'olá');
+    assert.ok(hits.includes('/models/gemini-3.8-flash:generateContent'));
+    hits.length = 0;
+    await mod.gemini.generate(req);
+    assert.deepEqual(hits.filter((u) => u.includes(':generateContent')), ['/models/gemini-3.8-flash:generateContent'], 'retired model not tried again');
+  } finally {
+    Object.assign(config.gemini, saved);
+    server.close();
+  }
+});

@@ -9,6 +9,9 @@ const cooldown = new Map();
 const COOLDOWN_MS = 5 * 60 * 1000;
 // Models that rejected our thinking setting; they get requests without it.
 const noThinkingConfig = new Set();
+// Models Google has retired or closed to this account, and replacements it suggested.
+const retired = new Set();
+const suggested = [];
 
 /**
  * Keep "thinking" to a minimum: Buggy's tasks are simple and speed matters.
@@ -71,9 +74,9 @@ export async function modelChain() {
     } catch {
       cachedModels = [];
     }
-    if (!cachedModels.length) cachedModels = ['gemini-2.5-flash'];
+    if (!cachedModels.length) cachedModels = ['gemini-flash-latest'];
   }
-  const chain = [...new Set([config.gemini.model, ...cachedModels].filter(Boolean))];
+  const chain = [...new Set([config.gemini.model, ...suggested, ...cachedModels].filter((m) => m && !retired.has(m)))];
   const now = Date.now();
   const ready = chain.filter((m) => !(cooldown.get(m) > now));
   return ready.length ? ready : chain;
@@ -86,6 +89,9 @@ export async function resolveModel() {
 /** Google is busy / rate limited: worth retrying or trying another model. */
 /** No answer in time, or the connection failed: try the next model rather than waiting again. */
 const isTimeout = (e) => ['TimeoutError', 'AbortError'].includes(e.name) || /fetch failed|ECONN|ETIMEDOUT|socket/i.test(`${e.message} ${e.cause?.code || ''}`);
+/** The model itself is gone or not offered to this account: use another one. */
+const isRetired = (e) => e.status === 404 ||
+  ([400, 403].includes(e.status) && /no longer available|not found|not supported|deprecated|retired|discontinued/i.test(e.message));
 const isBusy = (e) => isTimeout(e) || [429, 500, 502, 503, 504].includes(e.status) || /overload|high demand|unavailable|try again/i.test(e.message);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -113,7 +119,9 @@ export const gemini = {
     let data;
     let lastError;
     const deadline = Date.now() + this.totalBudgetMs;
-    for (const model of await modelChain()) {
+    const chain = await modelChain();
+    for (let i = 0; i < chain.length; i++) {
+      const model = chain[i];
       for (let attempt = 0; attempt <= this.retryDelays.length && !data; attempt++) {
         const started = Date.now();
         const left = deadline - started;
@@ -131,7 +139,17 @@ export const gemini = {
             continue;
           }
           if (process.env.BUGGY_DEBUG) console.log(`[buggy] ${model} failed after ${Date.now() - started} ms: ${e.name} ${e.message}`);
-          if (e.status === 404) break; // this model is not available: try the next one
+          if (isRetired(e)) {
+            // Skip this model from now on, and try the replacement Google names in its message.
+            retired.add(model);
+            for (const [, name] of e.message.matchAll(/models\/(gemini-[\w.-]+)/g)) {
+              if (name !== model && !retired.has(name) && !chain.includes(name)) {
+                chain.splice(i + 1, 0, name);
+                if (!suggested.includes(name)) suggested.push(name);
+              }
+            }
+            break;
+          }
           if (!isBusy(e)) throw e;
           if (isTimeout(e)) break; // a model that does not answer gets no second wait
           if (attempt < this.retryDelays.length) await sleep(this.retryDelays[attempt]);
