@@ -11,8 +11,16 @@
     <label>Linked person
       <select name="person_id"><option value="">–</option><% for (const p of people) { %><option value="<%= p.id %>" <%= occasion.person_id === p.id ? 'selected' : '' %>><%= p.first_name %> <%= p.last_name %></option><% } %></select>
     </label>
-    <label>Date of event (civil) *<input type="date" name="gregorian_date" value="<%= occasion.gregorian_date %>" required data-hebrew-preview="after_sunset"><small class="muted" data-hebrew-out></small></label>
+    <label>Date of event (civil) *<input type="date" name="gregorian_date" value="<%= occasion.gregorian_date %>" required data-occasion-date><small class="muted" data-hebrew-out></small></label>
   </div>
+  <div class="hebrew-entry" data-hebrew-entry>
+    <span class="small muted">…or enter the <strong>Hebrew date</strong>:</span>
+    <input type="number" min="1" max="30" placeholder="Day" class="w-sm" data-h-day aria-label="Hebrew day">
+    <select data-h-month aria-label="Hebrew month"><% for (const m of months) { %><option><%= m %></option><% } %></select>
+    <input type="number" min="3762" max="6200" placeholder="Year e.g. 5786" class="w-md" data-h-year aria-label="Hebrew year">
+    <small class="muted" data-h-status></small>
+  </div>
+  <div class="next-preview" data-next-preview hidden></div>
   <div class="checks">
     <label class="inline"><input type="checkbox" name="after_sunset" value="1" <%= occasion.after_sunset ? 'checked' : '' %>> Occurred after sunset (Hebrew date advances)</label>
     <label class="inline">Observe by

@@ -70,6 +70,58 @@
     update();
   });
 
+  // Occasion form: Hebrew date of the event, Hebrew-date entry, and the next observance.
+  $$('input[data-occasion-date]').forEach((input) => {
+    const form = input.form;
+    const out = input.parentElement.querySelector('[data-hebrew-out]');
+    const preview = form.querySelector('[data-next-preview]');
+    const field = (n) => form.elements[n];
+    const longDate = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const update = async () => {
+      if (!input.value) { if (preview) preview.hidden = true; if (out) out.textContent = ''; return; }
+      const q = new URLSearchParams({
+        date: input.value,
+        type: field('type') ? field('type').value : 'yahrzeit',
+        observe: field('observe') ? field('observe').value : 'hebrew',
+        after_sunset: field('after_sunset') && field('after_sunset').checked ? '1' : '0',
+      });
+      try {
+        const d = await (await fetch(`/api/next-occurrence?${q}`, { credentials: 'same-origin' })).json();
+        if (out && d.original) out.textContent = `${d.original.en} · ${d.original.he}`;
+        if (!preview) return;
+        const label = field('type') ? field('type').selectedOptions[0].textContent : 'Next';
+        preview.textContent = d.next
+          ? `Next ${label}: ${longDate(d.next.date)} — ${d.next.hebrew.en} (${d.next.daysAway === 0 ? 'today' : d.next.daysAway === 1 ? 'tomorrow' : `in ${d.next.daysAway} days`})`
+          : `No upcoming ${label} date.`;
+        preview.hidden = false;
+      } catch { /* ignore */ }
+    };
+    ['change', 'input'].forEach((ev) => input.addEventListener(ev, update));
+    ['type', 'observe', 'after_sunset'].forEach((n) => field(n) && field(n).addEventListener('change', update));
+    update();
+
+    // Typing a Hebrew date fills in the civil date.
+    const box = form.querySelector('[data-hebrew-entry]');
+    if (!box) return;
+    const day = box.querySelector('[data-h-day]');
+    const month = box.querySelector('[data-h-month]');
+    const year = box.querySelector('[data-h-year]');
+    const status = box.querySelector('[data-h-status]');
+    const convert = async () => {
+      if (!day.value || !year.value) return;
+      const q = new URLSearchParams({ day: day.value, month: month.value, year: year.value });
+      try {
+        const d = await (await fetch(`/api/from-hebrew?${q}`, { credentials: 'same-origin' })).json();
+        if (d.error) { status.textContent = d.error; return; }
+        input.value = d.date;
+        if (field('after_sunset')) field('after_sunset').checked = false; // the Hebrew date is exact
+        status.textContent = `= ${d.date}`;
+        update();
+      } catch { status.textContent = 'Could not convert'; }
+    };
+    [day, month, year].forEach((el) => el.addEventListener('change', convert));
+  });
+
   // Family search with datalist; stores the chosen id in a hidden field.
   $$('input[data-family-search]').forEach((input) => {
     const hidden = input.form.querySelector('[data-family-id]');

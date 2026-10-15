@@ -198,3 +198,9 @@ details > summary { cursor: pointer; }
 .pick-row { display: grid !important; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 6px 10px; margin: 0 !important; border-bottom: 1px solid var(--line); color: var(--text) !important; }
 .more-filters { margin: 4px 0 14px; }
 .more-filters summary { color: var(--primary); }
+
+/* Occasion form: Hebrew date entry and next-observance preview */
+.hebrew-entry { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 10px; }
+.hebrew-entry input, .hebrew-entry select { display: inline-block !important; width: auto !important; margin: 0 !important; }
+.hebrew-entry .w-md { width: 150px !important; }
+.next-preview { background: #eff8ff; border: 1px solid #b2ddff; color: #175cd3; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; }

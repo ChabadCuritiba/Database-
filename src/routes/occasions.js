@@ -88,7 +88,7 @@ router.get('/new', requirePermission('occasions.write'), (req, res) => {
   const family = mustGet(db, 'families', req.query.family_id);
   const people = db.prepare('SELECT * FROM people WHERE family_id = ?').all(family.id);
   res.render('occasions/form', {
-    title: 'New occasion', family, people, types: TYPES,
+    title: 'New occasion', family, people, types: TYPES, months: HEBREW_MONTHS,
     occasion: { type: oneOf(req.query.type, TYPES, 'yahrzeit'), remind: 1, remind_days_before: 7, remind_email: 1, observe: 'hebrew' },
   });
 });
@@ -110,7 +110,7 @@ router.get('/:id/edit', requirePermission('occasions.write'), (req, res) => {
   const occasion = mustGet(db, 'occasions', req.params.id);
   const family = mustGet(db, 'families', occasion.family_id);
   const people = db.prepare('SELECT * FROM people WHERE family_id = ?').all(family.id);
-  res.render('occasions/form', { title: 'Edit occasion', family, people, types: TYPES, occasion });
+  res.render('occasions/form', { title: 'Edit occasion', family, people, types: TYPES, months: HEBREW_MONTHS, occasion });
 });
 
 router.post('/:id', requirePermission('occasions.write'), (req, res) => {

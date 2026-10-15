@@ -354,3 +354,18 @@ test('campaign recipients: all contacts, chosen contacts, or filters', async () 
   const preview = await agent.postForm('/comms/preview', { channel: 'email', audience: 'pick', familyIds: ids.map(String), subject: 'S', body: 'B' });
   assert.match(preview.text, /<strong>42<\/strong> recipients/);
 });
+
+test('occasion form helpers: Hebrew date entry and next observance preview', async () => {
+  const { app } = setup();
+  const agent = await login(app, 'staff');
+  let res = await agent.get('/api/from-hebrew?day=24&month=Tishrei&year=5786');
+  assert.equal(res.body.date, '2025-10-16');
+  res = await agent.get('/api/from-hebrew?day=24&month=Tishrei');
+  assert.equal(res.status, 400);
+  res = await agent.get(`/api/next-occurrence?type=yahrzeit&date=2025-10-16`);
+  assert.equal(res.body.original.en, '24 Tishrei, 5786');
+  assert.ok(res.body.next.date > todayISO());
+  assert.equal(res.body.next.hebrew.day, 24);
+  res = await agent.get('/api/next-occurrence?date=bad');
+  assert.equal(res.status, 400);
+});
