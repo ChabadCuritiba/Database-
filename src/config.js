@@ -44,7 +44,8 @@ export const config = {
     port: Number(env.SMTP_PORT || 587),
     secure: env.SMTP_SECURE === '1',
     user: env.SMTP_USER || '',
-    pass: env.SMTP_PASS || '',
+    // Google shows App Passwords with spaces ("abcd efgh ijkl mnop"); Gmail expects them without.
+    pass: /gmail\.com$|googlemail\.com$/i.test(env.SMTP_HOST || '') ? (env.SMTP_PASS || '').replace(/\s+/g, '') : env.SMTP_PASS || '',
     from: env.MAIL_FROM || 'no-reply@example.org',
   },
   twilio: {
