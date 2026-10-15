@@ -34,7 +34,20 @@ Online payments use **Stripe Checkout**: card details are entered on Stripe's ho
 
 ## Getting started
 
-Requires Node.js 20+.
+Requires Node.js 20+ ([download](https://nodejs.org)).
+
+### Quick local demo
+
+```bash
+git clone -b claude/jewish-community-platform-7zr3fp https://github.com/ChabadCuritiba/Database-.git
+cd Database-
+npm install
+npm run demo
+```
+
+Open http://localhost:3000, choose a role under **Development login** and click **Sign in (dev)**. Demo data lives in `data/community.db`; delete that file to start fresh.
+
+### Real setup
 
 ```bash
 npm install
