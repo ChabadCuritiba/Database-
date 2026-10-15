@@ -300,3 +300,33 @@ test('a model that rejects the thinking setting is retried without it', async ()
     server.close();
   }
 });
+
+test('a Gemini model that never answers is abandoned quickly for the next one', async () => {
+  const server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => {
+      res.setHeader('content-type', 'application/json');
+      if (req.url.startsWith('/models?')) {
+        return res.end(JSON.stringify({ models: ['gemini-9-flash', 'gemini-8-flash'].map((n) => ({ name: `models/${n}`, supportedGenerationMethods: ['generateContent'] })) }));
+      }
+      if (req.url.includes('gemini-9-flash')) return; // hangs forever
+      res.end(JSON.stringify({ candidates: [{ content: { role: 'model', parts: [{ text: 'rápido' }] } }] }));
+    });
+  });
+  await new Promise((r) => server.listen(0, r));
+  const saved = { ...config.gemini };
+  Object.assign(config.gemini, { apiKey: 'k', model: '', baseUrl: `http://127.0.0.1:${server.address().port}` });
+  try {
+    const mod = await import(`../src/lib/buggy/gemini.js?hang=${Date.now()}`);
+    mod.gemini.requestTimeoutMs = 300;
+    const started = Date.now();
+    const out = await mod.gemini.generate({ system: 's', contents: [{ role: 'user', parts: [{ text: 'oi' }] }], tools: [] });
+    assert.equal(out.parts[0].text, 'rápido');
+    assert.ok(Date.now() - started < 2000, 'no repeated waits on the hanging model');
+  } finally {
+    Object.assign(config.gemini, saved);
+    server.closeAllConnections();
+    server.close();
+  }
+});

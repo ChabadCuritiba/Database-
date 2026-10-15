@@ -1,9 +1,13 @@
+import dns from 'node:dns';
 import cron from 'node-cron';
 import { config } from './config.js';
 import { openDb } from './db/index.js';
 import { createApp } from './app.js';
 import { sendDueReminders } from './lib/occasions.js';
 import { runBackup } from './lib/backup.js';
+
+// Cloud VMs often have no IPv6 route; trying IPv4 first avoids hanging connections.
+dns.setDefaultResultOrder('ipv4first');
 
 if (config.isProd && config.sessionSecret === 'dev-only-insecure-secret') {
   console.error('SESSION_SECRET must be set in production.');

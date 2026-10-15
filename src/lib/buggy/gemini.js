@@ -20,12 +20,12 @@ export function thinkingConfigFor(model) {
   return v < 3 ? { thinkingBudget: 0 } : { thinkingLevel: 'low' };
 }
 
-async function call(path, { method = 'GET', body } = {}) {
+async function call(path, { method = 'GET', body, timeoutMs = 15000 } = {}) {
   const res = await fetch(`${config.gemini.baseUrl}/${path}`, {
     method,
     headers: { 'content-type': 'application/json', 'x-goog-api-key': config.gemini.apiKey },
     body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(60000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -84,13 +84,17 @@ export async function resolveModel() {
 }
 
 /** Google is busy / rate limited: worth retrying or trying another model. */
-const isBusy = (e) => [429, 500, 502, 503, 504].includes(e.status) || /overload|high demand|unavailable|try again/i.test(e.message);
+/** No answer in time, or the connection failed: try the next model rather than waiting again. */
+const isTimeout = (e) => ['TimeoutError', 'AbortError'].includes(e.name) || /fetch failed|ECONN|ETIMEDOUT|socket/i.test(`${e.message} ${e.cause?.code || ''}`);
+const isBusy = (e) => isTimeout(e) || [429, 500, 502, 503, 504].includes(e.status) || /overload|high demand|unavailable|try again/i.test(e.message);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Tests replace this to simulate the model. */
 export const gemini = {
   enabled: () => !!config.gemini.apiKey,
   retryDelays: [800, 2000],
+  requestTimeoutMs: 20000, // one Gemini call
+  totalBudgetMs: 45000, // everything for one reply, across retries and models
   /**
    * Returns the model's content object: { role: 'model', parts: [...] }.
    * Busy answers are retried, then the next model in the chain is tried.
@@ -108,11 +112,16 @@ export const gemini = {
     };
     let data;
     let lastError;
+    const deadline = Date.now() + this.totalBudgetMs;
     for (const model of await modelChain()) {
       for (let attempt = 0; attempt <= this.retryDelays.length && !data; attempt++) {
         const started = Date.now();
+        const left = deadline - started;
+        if (left < 2000) break;
         try {
-          data = await call(`models/${encodeURIComponent(model)}:generateContent`, { method: 'POST', body: bodyFor(model) });
+          data = await call(`models/${encodeURIComponent(model)}:generateContent`, {
+            method: 'POST', body: bodyFor(model), timeoutMs: Math.min(this.requestTimeoutMs, left),
+          });
           if (process.env.BUGGY_DEBUG) console.log(`[buggy] ${model} answered in ${Date.now() - started} ms`);
         } catch (e) {
           lastError = e;
@@ -121,13 +130,16 @@ export const gemini = {
             attempt--;
             continue;
           }
+          if (process.env.BUGGY_DEBUG) console.log(`[buggy] ${model} failed after ${Date.now() - started} ms: ${e.name} ${e.message}`);
           if (e.status === 404) break; // this model is not available: try the next one
           if (!isBusy(e)) throw e;
+          if (isTimeout(e)) break; // a model that does not answer gets no second wait
           if (attempt < this.retryDelays.length) await sleep(this.retryDelays[attempt]);
         }
       }
       if (data) break;
       if (lastError && isBusy(lastError)) cooldown.set(model, Date.now() + COOLDOWN_MS);
+      if (deadline - Date.now() < 2000) break;
     }
     if (!data) {
       throw Object.assign(new Error(isBusy(lastError || {}) ? 'Os servidores do Google estão ocupados agora. Tente de novo em um minuto.' : lastError?.message || 'Gemini failed'), { busy: true });
