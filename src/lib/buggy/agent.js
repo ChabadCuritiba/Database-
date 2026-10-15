@@ -29,8 +29,9 @@ function systemPrompt(user, settings, lang) {
     'Use the tools to look things up and to make changes. Never invent contacts, ids, emails, dates or amounts.',
     'To act on an existing contact, search for it first; if a search returns several matches, ask which one. create_contact checks for duplicates itself.',
     'Spell emails exactly as the user said them; if an email or name spelling is unclear, ask.',
-    'Changes are not saved until the user confirms: after calling a change tool, tell the user exactly what will be done and ask them to confirm.',
-    'Never say a change was made unless the system told you it was confirmed.',
+    'New contacts are saved immediately by create_contact. Other changes are not saved until the user confirms:',
+    'after calling one of those tools, tell the user exactly what will be done and ask them to confirm.',
+    'Never say a change was made unless a tool result says it was saved.',
     'If the user asks for something no tool can do, say so briefly.',
   ].join('\n');
 }
@@ -136,6 +137,7 @@ async function converse(db, user, state, settings, onStep) {
     }
     let proposed = 0;
     let needsModel = false;
+    const saved = [];
     const responses = calls.map(({ functionCall: fc }) => {
       onStep(stepFor(fc.name));
       const { tool, error } = findTool(user, fc.name);
@@ -148,6 +150,10 @@ async function converse(db, user, state, settings, onStep) {
             const prepared = tool.prepare(db, user, fc.args || {}, state.lang);
             if (prepared.warning) {
               response = { status: 'not_proposed', warning: prepared.warning };
+            } else if (tool.autoSave) {
+              const result = tool.execute(db, user, prepared.args, state.lang);
+              saved.push(result);
+              response = { status: 'saved', message: result.message, ...(result.family_id ? { family_id: result.family_id } : {}) };
             } else {
               state.pending.push({ tool: tool.name, args: prepared.args, summary: prepared.summary });
               proposed++;
@@ -162,16 +168,24 @@ async function converse(db, user, state, settings, onStep) {
           response = { error: e instanceof ToolError ? e.message : `Unexpected error: ${e.message}` };
         }
       }
-      if (!response.status || response.status !== 'awaiting_user_confirmation') needsModel = true;
+      if (!['awaiting_user_confirmation', 'saved'].includes(response.status)) needsModel = true;
       return { functionResponse: { name: fc.name, ...(fc.id ? { id: fc.id } : {}), response } };
     });
     state.contents.push({ role: 'user', parts: responses });
-    if (proposed && !needsModel) {
-      // Every call was a change ready for confirmation: ask the user directly
+    if ((proposed || saved.length) && !needsModel) {
+      // Every call was saved or is ready for confirmation: answer directly
       // instead of waiting for the model to phrase it (saves a full round trip).
-      const reply = `${state.pending.map((p) => p.summary).join('. ')}. ${T(state.lang).confirm}`;
+      const t = T(state.lang);
+      const parts = [];
+      if (saved.length) parts.push(`${t.done} ${saved.map((r) => r.message).join(' ')}`);
+      if (proposed) parts.push(`${state.pending.map((p) => p.summary).join('. ')}. ${t.confirm}`);
+      const reply = parts.join(' ');
       state.contents.push({ role: 'model', parts: [{ text: reply }] });
-      return { reply, pending: state.pending.map((p) => ({ summary: p.summary })) };
+      return {
+        reply,
+        links: saved.filter((r) => r.link).map((r) => ({ href: r.link, label: r.message })),
+        pending: state.pending.map((p) => ({ summary: p.summary })),
+      };
     }
   }
   return { reply: T(state.lang).lost, pending: state.pending.map((p) => ({ summary: p.summary })) };

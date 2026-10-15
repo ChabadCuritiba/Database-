@@ -110,6 +110,7 @@ export const TOOLS = [
   {
     name: 'create_contact',
     kind: 'write',
+    autoSave: true, // saved right away (no confirmation) unless a similar contact exists
     permission: 'contacts.write',
     description: 'Create a new contact (family). It checks for existing similar contacts itself, so no search is needed first. Include family members mentioned together (e.g. a spouse).',
     parameters: {

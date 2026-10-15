@@ -32,7 +32,7 @@ async function buggyAgent(app, role) {
   return { agent, page };
 }
 
-test('Buggy adds a contact with a family member only after confirmation', async () => {
+test('Buggy creates a contact with a family member right away, without asking', async () => {
   const { db, app } = setup();
   const calls = fakeGemini([
     callTool('search_contacts', { query: 'Joseli' }),
@@ -42,13 +42,11 @@ test('Buggy adds a contact with a family member only after confirmation', async 
   assert.match(page.text, /Buggy/);
   assert.match(page.text, /buggy\.webmanifest/);
 
-  let res = await chat(agent, 'Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com');
+  const res = await chat(agent, 'Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com');
   assert.equal(res.status, 200);
-  assert.equal(res.body.pending.length, 1);
-  assert.match(res.body.pending[0].summary, /Criar contato "Joseli".*joseli@gmail\.com.*Dimini \(cônjuge\)/);
-  assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name = 'Joseli'").get().n, 0, 'nothing saved before confirming');
-  assert.equal(calls.length, 2, 'the confirmation question needs no extra model call');
-  assert.match(res.body.reply, /Criar contato "Joseli".*Confirma\?$/);
+  assert.equal(res.body.pending.length, 0, 'no confirmation needed for a new contact');
+  assert.equal(res.body.reply, 'Pronto! Contato "Joseli" criado.');
+  assert.equal(calls.length, 2, 'the answer needs no extra model call');
 
   // The tool results went back to the model, and the model reply (with its thought signature) was kept verbatim.
   const second = calls[1].contents;
@@ -58,8 +56,6 @@ test('Buggy adds a contact with a family member only after confirmation', async 
   assert.ok(!calls[0].tools.some((t) => t.name === 'record_donation'), 'staff cannot record donations');
   assert.match(calls[0].system, /You are Buggy/);
 
-  res = await chat(agent, 'sim');
-  assert.match(res.body.reply, /Pronto!.*Joseli/);
   const fam = db.prepare("SELECT * FROM families WHERE family_name = 'Joseli'").get();
   assert.equal(fam.email, 'joseli@gmail.com');
   assert.equal(fam.source, 'Buggy');
@@ -260,8 +256,10 @@ test('create_contact warns about similar contacts and lets the model ask first',
   assert.match(res.body.reply, /Já existe/);
   const warning = calls[1].contents.at(-1).parts[0].functionResponse.response.warning;
   assert.equal(warning.similar[0].family_name, 'Saverman');
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name = 'Saverman'").get().n, 1, 'nothing created while asking');
   res = await chat(agent, 'Cria um novo mesmo assim');
-  assert.equal(res.body.pending.length, 1);
+  assert.equal(res.body.pending.length, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name = 'Saverman'").get().n, 2);
 });
 
 test('thinking is kept minimal for each Gemini generation', async () => {
@@ -348,11 +346,13 @@ test('progress steps are streamed while Buggy works, then the result', async () 
   assert.match(res.headers['content-type'], /ndjson/);
   const lines = res.body.trim().split('\n').map((l) => JSON.parse(l));
   assert.deepEqual(lines.filter((l) => l.step).map((l) => l.step), ['thinking', 'searching', 'thinking', 'creating_contact']);
-  assert.equal(lines.at(-1).result.pending.length, 1);
-  // The pending change survived the streamed response (session saved).
-  const yes = await chat(agent, 'sim');
-  assert.match(yes.body.reply, /Pronto/);
+  assert.equal(lines.at(-1).result.pending.length, 0);
+  assert.match(lines.at(-1).result.reply, /^Pronto!/);
   assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name = 'Novo'").get().n, 1);
+  // The conversation survived the streamed response (session saved).
+  fakeGemini([say('Ok!')]);
+  const next = await chat(agent, 'obrigado');
+  assert.equal(next.body.reply, 'Ok!');
 });
 
 test('a retired Gemini model is skipped and the replacement Google suggests is used', async () => {
@@ -437,20 +437,23 @@ test('Buggy answers in the language chosen on the page', async () => {
 
   let res = await send('add Edward, edward@gmail.com', 'en-US');
   assert.match(calls[0].system, /Always reply in English/);
-  assert.equal(res.body.reply, 'Create contact "Edward", email edward@gmail.com. Shall I save it?');
-  res = await send('yes', 'en-US');
   assert.equal(res.body.reply, 'Done! Contact "Edward" created.');
 
   res = await send('תוסיף את משפחת לוי עם דינה', 'he-IL');
   assert.match(calls[1].system, /Always reply in Hebrew/);
-  assert.match(res.body.reply, /^ליצור איש קשר "Levi".*עם Dina \(בן\/בת זוג\)\. לשמור\?$/);
-  res = await send('כן', 'he-IL');
   assert.equal(res.body.reply, 'בוצע! איש הקשר "Levi" נוצר.');
   assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name IN ('Edward', 'Levi')").get().n, 2);
 
-  // Cancelling and errors follow the language too.
-  fakeGemini([callTool('create_contact', { family_name: 'X' })]);
-  await send('add X', 'en-US');
+  // Confirming, cancelling and errors follow the language too.
+  const fid = db.prepare("SELECT id FROM families WHERE family_name = 'Edward'").get().id;
+  const fin = await buggyAgent(app, 'finance');
+  fakeGemini([callTool('add_occasion', { family_id: fid, type: 'yahrzeit', name: 'Avraham', date: '2020-03-15' })]);
+  res = await fin.agent.post('/assistant/message').set('x-csrf-token', fin.agent.csrfToken).send({ text: 'add yahrzeit', lang: 'en-US' });
+  assert.match(res.body.reply, /^Add the Yahrzeit of Avraham .* Shall I save it\?$/);
+  res = await fin.agent.post('/assistant/message').set('x-csrf-token', fin.agent.csrfToken).send({ text: 'yes', lang: 'en-US' });
+  assert.equal(res.body.reply, 'Done! Yahrzeit of Avraham added.');
+  fakeGemini([callTool('add_occasion', { family_id: fid, type: 'birthday', name: 'Edward', date: '1990-01-01' })]);
+  await send('add birthday', 'en-US');
   res = await agent.post('/assistant/confirm').set('x-csrf-token', agent.csrfToken).send({ decision: 'no', lang: 'en-US' });
   assert.equal(res.body.reply, 'OK, cancelled. Nothing was saved.');
   gemini.generate = async () => { throw Object.assign(new Error('busy'), { busy: true }); };

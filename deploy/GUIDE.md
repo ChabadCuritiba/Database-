@@ -97,7 +97,7 @@ Edit `/opt/crm/.env` as in step 4.3 and restart. Until you do, messages are only
    ```
 3. Restart: `sudo systemctl restart crm`. Open **🎙 Buggy** in the menu.
 
-Buggy picks the best available Gemini "Flash" model automatically and switches by itself when Google retires one, so don't set `GEMINI_MODEL` unless you have a specific reason. Buggy never saves anything without asking you to confirm. To open it by voice, see "Abrir o Buggy pela voz no celular" on the Buggy page (Siri Shortcut on iPhone, "Ok Google, abrir Buggy" on Android).
+Buggy picks the best available Gemini "Flash" model automatically and switches by itself when Google retires one, so don't set `GEMINI_MODEL` unless you have a specific reason. Buggy creates new contacts right away (it asks first if a similar contact already exists); donations, Yahrzeits and other changes wait for you to confirm. To open it by voice, see "Abrir o Buggy pela voz no celular" on the Buggy page (Siri Shortcut on iPhone, "Ok Google, abrir Buggy" on Android).
 
 ## Everyday tasks
 
