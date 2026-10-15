@@ -112,7 +112,9 @@ systemctl restart crm
 cat > /etc/caddy/Caddyfile <<CADDY
 $DOMAIN {
   encode gzip
-  reverse_proxy localhost:3000
+  reverse_proxy localhost:3000 {
+    flush_interval -1
+  }
 }
 CADDY
 systemctl restart caddy

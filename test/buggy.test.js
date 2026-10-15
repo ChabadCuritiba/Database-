@@ -330,3 +330,27 @@ test('a Gemini model that never answers is abandoned quickly for the next one', 
     server.close();
   }
 });
+
+test('progress steps are streamed while Buggy works, then the result', async () => {
+  const { db, app } = setup();
+  fakeGemini([
+    callTool('search_contacts', { query: 'Cohen' }),
+    callTool('create_contact', { family_name: 'Novo', email: 'novo@example.org' }),
+  ]);
+  const { agent } = await buggyAgent(app, 'staff');
+  const res = await agent.post('/assistant/message').set('x-csrf-token', agent.csrfToken)
+    .set('accept', 'application/x-ndjson').send({ text: 'Adiciona Novo' }).buffer(true).parse((r, cb) => {
+      let t = ''; r.on('data', (c) => { t += c; }); r.on('end', () => cb(null, t));
+    });
+  assert.match(res.headers['content-type'], /ndjson/);
+  const lines = res.body.trim().split('\n').map((l) => JSON.parse(l));
+  assert.deepEqual(lines.filter((l) => l.step).map((l) => l.step), [
+    'Conectando ao Google Gemini', 'Entendendo o pedido', 'Procurando "Cohen" nos contatos',
+    'Analisando os resultados', 'Preparando: novo contato "Novo"',
+  ]);
+  assert.equal(lines.at(-1).result.pending.length, 1);
+  // The pending change survived the streamed response (session saved).
+  const yes = await chat(agent, 'sim');
+  assert.match(yes.body.reply, /Pronto/);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name = 'Novo'").get().n, 1);
+});

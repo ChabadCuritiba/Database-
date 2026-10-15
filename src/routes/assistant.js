@@ -44,16 +44,40 @@ router.get('/', (req, res) => {
   });
 });
 
+/**
+ * Clients sending `Accept: application/x-ndjson` get progress lines while Buggy
+ * works ({"step": "..."}) and then {"result": {...}} or {"error": "..."}.
+ * Other clients get one JSON answer.
+ */
+function responder(req, res) {
+  const streaming = (req.get('accept') || '').includes('application/x-ndjson');
+  if (streaming) {
+    res.status(200).set({
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no',
+    });
+    res.flushHeaders();
+  }
+  const line = (obj) => res.write(`${JSON.stringify(obj)}\n`);
+  return {
+    step: streaming ? (text) => line({ step: text }) : () => {},
+    done: (result) => (streaming ? res.end(`${JSON.stringify({ result })}\n`) : res.json(result)),
+    fail: (status, error) => (streaming ? res.end(`${JSON.stringify({ error })}\n`) : res.status(status).json({ error })),
+  };
+}
+
 router.post('/message', async (req, res) => {
-  if (!gemini.enabled()) return res.status(503).json({ error: 'Buggy is not configured yet (GEMINI_API_KEY is missing).' });
-  if (rateLimited(req.user.id)) return res.status(429).json({ error: 'Muitas mensagens seguidas. Espere um minuto.' });
+  const out = responder(req, res);
+  if (!gemini.enabled()) return out.fail(503, 'Buggy is not configured yet (GEMINI_API_KEY is missing).');
+  if (rateLimited(req.user.id)) return out.fail(429, 'Muitas mensagens seguidas. Espere um minuto.');
   const db = req.app.get('db');
   try {
-    const result = await handleMessage(db, req.user, state(req), req.body?.text, getSettings(db));
-    res.json(result);
+    out.step('Conectando ao Google Gemini');
+    out.done(await handleMessage(db, req.user, state(req), req.body?.text, getSettings(db), out.step));
   } catch (e) {
     console.error('[buggy]', e);
-    res.status(502).json({ error: e.busy ? e.message : `Buggy não conseguiu responder agora. (${e.message})` });
+    out.fail(502, e.busy ? e.message : `Buggy não conseguiu responder agora. (${e.message})`);
   }
 });
 
@@ -61,7 +85,7 @@ router.post('/confirm', async (req, res) => {
   const db = req.app.get('db');
   const s = state(req);
   if (!s.pending.length) return res.json({ reply: 'Não há nada esperando confirmação.', pending: [] });
-  const result = req.body?.decision === 'yes' ? await confirmPending(db, req.user, s) : cancelPending(s);
+  const result = req.body?.decision === 'yes' ? await confirmPending(db, req.user, s, () => {}) : cancelPending(s);
   res.json(result);
 });
 

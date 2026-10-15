@@ -49,7 +49,24 @@ function note(state, userNote, reply) {
   state.contents.push({ role: 'model', parts: [{ text: reply }] });
 }
 
-export async function confirmPending(db, user, state) {
+/** Short, human description of what a tool call is doing (shown while Buggy works). */
+export function describeCall(name, args = {}) {
+  switch (name) {
+    case 'search_contacts': return `Procurando "${args.query || ''}" nos contatos`;
+    case 'get_contact': return 'Abrindo a ficha do contato';
+    case 'upcoming_occasions': return 'Verificando as próximas datas';
+    case 'list_funds': return 'Consultando os fundos';
+    case 'create_contact': return `Preparando: novo contato "${args.family_name || ''}"`;
+    case 'add_family_member': return `Preparando: adicionar ${args.first_name || 'pessoa'} à família`;
+    case 'update_contact_info': return 'Preparando: atualizar dados do contato';
+    case 'record_donation': return 'Preparando: registrar doação';
+    case 'add_occasion': return `Preparando: adicionar ${args.name || 'data'}`;
+    default: return 'Trabalhando';
+  }
+}
+
+export async function confirmPending(db, user, state, onStep = () => {}) {
+  onStep('Salvando');
   const done = [];
   const failed = [];
   for (const p of state.pending) {
@@ -76,12 +93,12 @@ export function cancelPending(state, reason = 'O usuário cancelou') {
   return { reply, pending: [] };
 }
 
-export async function handleMessage(db, user, state, text, settings = {}) {
+export async function handleMessage(db, user, state, text, settings = {}, onStep = () => {}) {
   text = String(text || '').trim().slice(0, 2000);
   if (!text) return { reply: 'Não ouvi nada. Pode repetir?', pending: state.pending };
 
   if (state.pending.length) {
-    if (isYes(text)) return confirmPending(db, user, state);
+    if (isYes(text)) return confirmPending(db, user, state, onStep);
     if (isNo(text)) return cancelPending(state);
     cancelPending(state, 'O usuário mudou de assunto antes de confirmar');
   }
@@ -90,7 +107,7 @@ export async function handleMessage(db, user, state, text, settings = {}) {
   const pendingBefore = state.pending.length;
   state.contents.push({ role: 'user', parts: [{ text }] });
   try {
-    return await converse(db, user, state, settings);
+    return await converse(db, user, state, settings, onStep);
   } catch (e) {
     // Forget the failed turn so the conversation stays valid for the next try.
     state.contents.splice(before);
@@ -99,13 +116,14 @@ export async function handleMessage(db, user, state, text, settings = {}) {
   }
 }
 
-async function converse(db, user, state, settings) {
+async function converse(db, user, state, settings, onStep) {
   const tools = toolsFor(user);
   const decls = declarations(tools);
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     trim(state.contents);
-    const content = await gemini.generate({ system: systemPrompt(user, settings), contents: state.contents, tools: decls });
+    onStep(round === 0 ? 'Entendendo o pedido' : 'Analisando os resultados');
+    const content = await gemini.generate({ system: systemPrompt(user, settings), contents: state.contents, tools: decls, onStep });
     state.contents.push(content);
     const calls = content.parts.filter((p) => p.functionCall);
     if (!calls.length) {
@@ -114,6 +132,7 @@ async function converse(db, user, state, settings) {
     let proposed = 0;
     let needsModel = false;
     const responses = calls.map(({ functionCall: fc }) => {
+      onStep(describeCall(fc.name, fc.args));
       const { tool, error } = findTool(user, fc.name);
       let response;
       if (error) response = { error };

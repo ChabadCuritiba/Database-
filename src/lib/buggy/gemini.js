@@ -99,7 +99,7 @@ export const gemini = {
    * Returns the model's content object: { role: 'model', parts: [...] }.
    * Busy answers are retried, then the next model in the chain is tried.
    */
-  async generate({ system, contents, tools }) {
+  async generate({ system, contents, tools, onStep = () => {} }) {
     const bodyFor = (model) => {
       const thinking = noThinkingConfig.has(model) ? null : thinkingConfigFor(model);
       return {
@@ -113,8 +113,11 @@ export const gemini = {
     let data;
     let lastError;
     const deadline = Date.now() + this.totalBudgetMs;
+    let tried = 0;
     for (const model of await modelChain()) {
+      if (tried++) onStep('Servidor do Google ocupado, tentando outro modelo');
       for (let attempt = 0; attempt <= this.retryDelays.length && !data; attempt++) {
+        if (attempt) onStep('Google demorou, tentando de novo');
         const started = Date.now();
         const left = deadline - started;
         if (left < 2000) break;

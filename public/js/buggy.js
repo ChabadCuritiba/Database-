@@ -93,21 +93,83 @@
     setStatus(result.pending && result.pending.length ? 'Diga “sim” para salvar ou “não” para cancelar.' : '');
     await speak(result.reply);
   }
+  /** A "working" bubble that lists each step Buggy takes, ticking off finished ones. */
+  function progressBubble() {
+    const div = document.createElement('div');
+    div.className = 'bubble buggy-msg progress';
+    const list = document.createElement('ul');
+    div.appendChild(list);
+    chat.appendChild(div);
+    scroll();
+    let started = Date.now();
+    const timer = setInterval(() => {
+      const cur = list.lastElementChild;
+      if (cur) cur.dataset.secs = `${Math.round((Date.now() - started) / 1000)}s`;
+    }, 1000);
+    return {
+      step(text) {
+        const prev = list.lastElementChild;
+        if (prev) { prev.classList.add('done'); delete prev.dataset.secs; }
+        const li = document.createElement('li');
+        li.textContent = text;
+        list.appendChild(li);
+        started = Date.now();
+        setStatus(`${text}…`);
+        scroll();
+      },
+      remove() { clearInterval(timer); div.remove(); },
+    };
+  }
+
+  /** Sends a message and reads the progress lines ({"step"}) until the final {"result"}. */
+  async function streamMessage(text, progress) {
+    const res = await fetch('/assistant/message', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json', accept: 'application/x-ndjson', 'x-csrf-token': csrf },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok || !res.body || !(res.headers.get('content-type') || '').includes('ndjson')) {
+      const data = await res.json().catch(() => ({ error: `Erro ${res.status}` }));
+      return data.reply !== undefined ? data : { error: data.error || `Erro ${res.status}` };
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let final = null;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (value) buffer += decoder.decode(value, { stream: true });
+      let nl;
+      while ((nl = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, nl).trim();
+        buffer = buffer.slice(nl + 1);
+        if (!line) continue;
+        const msg = JSON.parse(line);
+        if (msg.step) progress.step(msg.step);
+        else if (msg.result) final = msg.result;
+        else if (msg.error) final = { error: msg.error };
+      }
+      if (done) break;
+    }
+    return final || { error: 'A conexão caiu antes da resposta. Tente de novo.' };
+  }
+
   async function send(text) {
     text = (text || '').trim();
     if (!text || busy || !enabled) return;
     busy = true;
     bubble(text, 'me');
-    const thinking = bubble('…', 'buggy');
-    thinking.classList.add('thinking');
-    setStatus('Buggy está pensando…');
+    const progress = progressBubble();
+    progress.step('Enviando');
     try {
-      const result = await post('/assistant/message', { text });
-      thinking.remove();
+      const result = await streamMessage(text, progress);
+      progress.remove();
       await handle(result);
     } catch {
-      thinking.remove();
+      progress.remove();
       bubble('Sem conexão com o servidor.', 'buggy');
+      setStatus('');
     } finally {
       busy = false;
     }
