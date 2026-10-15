@@ -116,7 +116,7 @@ export async function handleMessage(db, user, state, text, settings = {}, onStep
   const pendingBefore = state.pending.length;
   state.contents.push({ role: 'user', parts: [{ text }] });
   try {
-    return await converse(db, user, state, settings, onStep);
+    return await converse(db, user, state, settings, onStep, text);
   } catch (e) {
     // Forget the failed turn so the conversation stays valid for the next try.
     state.contents.splice(before);
@@ -125,9 +125,16 @@ export async function handleMessage(db, user, state, text, settings = {}, onStep
   }
 }
 
-async function converse(db, user, state, settings, onStep) {
+// Requests to add someone ("add", "adiciona", "תוסיף"...). Used to catch a model that asks
+// permission instead of calling create_contact, which happens most often in English.
+const ADD_REQUEST = /\b(add|create|new|save|register|put)\b|adicion|acrescent|\bcri[ae]\b|cadastr|registr|\bsalv|\bnov[oa]\b|תוסיף|הוסף|להוסיף|תיצור|צור|תשמור|תרשום|חדש/i;
+const NUDGE = '[Nota do sistema] Do not ask for permission or confirmation to add a contact. If the user asked to add a new contact '
+  + 'and gave at least a name, call create_contact now with the details given. Otherwise answer the user normally.';
+
+async function converse(db, user, state, settings, onStep, text = '') {
   const tools = toolsFor(user);
   const decls = declarations(tools);
+  let nudged = false;
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     trim(state.contents);
@@ -136,6 +143,14 @@ async function converse(db, user, state, settings, onStep) {
     state.contents.push(content);
     const calls = content.parts.filter((p) => p.functionCall);
     if (!calls.length) {
+      if (round === 0 && !nudged && ADD_REQUEST.test(text) && textOf(content).includes('?') && tools.some((t) => t.name === 'create_contact')) {
+        // It asked instead of saving: drop the question and tell it to save.
+        nudged = true;
+        state.contents.pop();
+        state.contents.at(-1).parts.push({ text: NUDGE });
+        round--;
+        continue;
+      }
       return { reply: textOf(content) || 'Ok.', pending: state.pending.map((p) => ({ summary: p.summary })) };
     }
     let proposed = 0;

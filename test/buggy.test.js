@@ -477,3 +477,30 @@ test('create_contact saves without asking in English and Hebrew, even with a sha
   assert.equal(res.body.pending.length, 0);
   assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name = 'Levi'").get().n, 1);
 });
+
+test('when the model asks permission to add a contact, Buggy tells it to save instead', async () => {
+  const { db, app } = setup();
+  const calls = fakeGemini([
+    say('Would you like me to add John Smith to your contacts?'),
+    callTool('create_contact', { family_name: 'Smith', first_name: 'John' }),
+  ]);
+  const { agent } = await buggyAgent(app, 'staff');
+  const res = await chat(agent, 'Add John Smith', 'en-US');
+  assert.equal(res.body.pending.length, 0);
+  assert.doesNotMatch(res.body.reply, /Would you like/);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name = 'Smith'").get().n, 1);
+  const sent = calls[1].contents;
+  assert.ok(!sent.some((c) => c.role === 'model' && JSON.stringify(c).includes('Would you like')), 'the question is dropped');
+  assert.match(sent.at(-1).parts.at(-1).text, /Do not ask/);
+  const page = await agent.get('/assistant');
+  assert.doesNotMatch(page.text, /Nota do sistema|Do not ask/);
+});
+
+test('a normal question is not nudged', async () => {
+  const { app } = setup();
+  const calls = fakeGemini([say('Which Cohen do you mean?')]);
+  const { agent } = await buggyAgent(app, 'staff');
+  const res = await chat(agent, 'What is the phone of Cohen?', 'en-US');
+  assert.match(res.body.reply, /Which Cohen/);
+  assert.equal(calls.length, 1);
+});

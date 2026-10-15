@@ -27,8 +27,8 @@ function state(req) {
 function transcript(s) {
   const out = [];
   for (const c of s.contents) {
-    const text = c.parts.filter((p) => typeof p.text === 'string' && !p.thought).map((p) => p.text).join(' ').trim();
-    if (!text || text.startsWith('[Nota do sistema]')) continue;
+    const text = c.parts.filter((p) => typeof p.text === 'string' && !p.thought && !p.text.startsWith('[Nota do sistema]')).map((p) => p.text).join(' ').trim();
+    if (!text) continue;
     out.push({ who: c.role === 'model' ? 'buggy' : 'me', text });
   }
   return out.slice(-30);
