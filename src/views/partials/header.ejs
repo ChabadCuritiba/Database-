@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title ? title + ' · ' : '' %><%= settings.org_name %></title>
-  <link rel="stylesheet" href="/static/css/app.css">
-  <script src="/static/js/app.js" defer></script>
+  <link rel="stylesheet" href="/static/css/app.css?v=<%= assetVersion %>">
+  <script src="/static/js/app.js?v=<%= assetVersion %>" defer></script>
 </head>
 <body class="<%= typeof layout !== 'undefined' && layout === 'public' ? 'public' : '' %>">
 <% if (typeof layout !== 'undefined' && layout === 'public') { %>

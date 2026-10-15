@@ -32,13 +32,15 @@ export function mergeFields(family, settings) {
 
 /**
  * Recipient criteria from a compose form:
- *   all    every contact reachable on the channel
- *   pick   only the contacts ticked in the list
- *   filter the category / priority / ... filters
+ *   all=1          every contact reachable on the channel
+ *   familyIds[]    only the contacts picked from the dropdown
+ *   otherwise      the category / priority / ... filters
+ * The preview page passes the resolved `audience` along explicitly.
  */
 export function audienceCriteria(body, channel) {
-  const audience = oneOf(body.audience, AUDIENCES, 'filter');
   const c = normalizeCriteria(body);
+  const audience = AUDIENCES.includes(body.audience) ? body.audience
+    : body.all === '1' ? 'all' : c.familyIds.length ? 'pick' : 'filter';
   let criteria;
   if (audience === 'all') criteria = normalizeCriteria({});
   else if (audience === 'pick') criteria = { ...normalizeCriteria({}), familyIds: c.familyIds.length ? c.familyIds : [-1] };
@@ -71,10 +73,7 @@ router.get('/compose', (req, res) => {
   const channel = oneOf(req.query.channel, CHANNELS, 'email');
   const criteria = normalizeCriteria(req.query);
   const contacts = pickable(db, channel);
-  res.render('comms/compose', {
-    title: 'New campaign', channel, criteria, contacts,
-    audience: oneOf(req.query.audience, AUDIENCES, 'all'), ...lookups(db),
-  });
+  res.render('comms/compose', { title: 'New campaign', channel, criteria, contacts, ...lookups(db) });
 });
 
 router.post('/preview', (req, res) => {

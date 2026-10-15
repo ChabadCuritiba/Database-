@@ -2,7 +2,7 @@
 <fieldset class="criteria">
   <legend>Who should receive it?</legend>
   <div class="grid3">
-    <label>Search<input name="q" value="<%= criteria.q %>" placeholder="name, email…"></label>
+    <% if (typeof hideSearch === 'undefined' || !hideSearch) { %><label>Search<input name="q" value="<%= criteria.q %>" placeholder="name, email…"></label><% } %>
     <label>Priority (at most)
       <select name="priorityMax"><option value="">Any</option><% for (let p = 1; p <= 5; p++) { %><option value="<%= p %>" <%= criteria.priorityMax == p ? 'selected' : '' %>><%= p %><%= p === 1 ? ' (highest)' : '' %></option><% } %></select>
     </label>

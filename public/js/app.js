@@ -95,43 +95,130 @@
     function label(f) { return `${f.family_name}${f.city ? ` (${f.city})` : ''} #${f.id}`; }
   });
 
-  // Campaign recipients: show the panel for the chosen audience; searchable contact picker.
-  $$('[data-audience-form]').forEach((form) => {
-    const panels = $$('[data-audience-panel]', form);
-    const sync = () => {
-      const chosen = (form.querySelector('input[name=audience]:checked') || {}).value;
-      panels.forEach((p) => {
-        const on = p.dataset.audiencePanel === chosen;
-        p.hidden = !on;
-        // Hidden panels must not submit their fields.
-        $$('input, select', p).forEach((el) => { el.disabled = !on; });
-      });
+  // Campaign recipients: type to get a dropdown of contacts, click to add; or "All contacts".
+  $$('[data-recipients-form]').forEach((form) => {
+    const picker = form.querySelector('[data-picker]');
+    const search = form.querySelector('[data-recipient-search]');
+    const dropdown = form.querySelector('[data-dropdown]');
+    const chips = form.querySelector('[data-chips]');
+    const allBox = form.querySelector('[data-all-contacts]');
+    const box = form.querySelector('.recipient-box');
+    const hint = form.querySelector('[data-recipient-hint]');
+    const filters = form.querySelector('[data-filters]');
+    if (!picker || !search) return;
+    picker.classList.add('enhanced');
+    const items = $$('.pick-row', picker).map((row) => ({
+      row,
+      input: row.querySelector('input'),
+      name: row.dataset.name,
+      sub: row.dataset.sub,
+      contact: row.dataset.contact,
+      // Words a query can start with: names, salutation, and the parts of the email/phone.
+      words: `${row.dataset.name} ${row.dataset.sub} ${row.dataset.contact}`.toLowerCase().split(/[\s@.,()&-]+/).filter(Boolean),
+      contactLower: row.dataset.contact.toLowerCase(),
+      digits: row.dataset.contact.replace(/\D/g, ''),
+    }));
+    const matches = (it, q) => {
+      if (it.contactLower.startsWith(q) || it.words.some((w) => w.startsWith(q))) return true;
+      const d = q.replace(/\D/g, '');
+      return d.length >= 3 && it.digits.includes(d); // phone numbers typed with any formatting
     };
-    $$('input[name=audience]', form).forEach((r) => r.addEventListener('change', sync));
-    sync();
+    let active = -1;
 
-    const rows = $$('.pick-row', form);
-    const count = form.querySelector('[data-pick-count]');
-    const search = form.querySelector('[data-pick-search]');
-    const updateCount = () => { if (count) count.textContent = rows.filter((r) => r.querySelector('input').checked).length; };
-    const visible = () => rows.filter((r) => !r.hidden);
-    if (search) search.addEventListener('input', () => {
+    const selected = () => items.filter((i) => i.input.checked);
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+
+    function renderChips() {
+      chips.innerHTML = '';
+      for (const it of selected()) {
+        const chip = el('span', 'chip', it.name);
+        const x = el('button', '', '×');
+        x.type = 'button';
+        x.setAttribute('aria-label', `Remove ${it.name}`);
+        x.addEventListener('click', () => { it.input.checked = false; update(); search.focus(); });
+        chip.appendChild(x);
+        chips.appendChild(chip);
+      }
+    }
+
+    function update() {
+      const all = allBox && allBox.checked;
+      box.classList.toggle('disabled', !!all);
+      items.forEach((i) => { i.input.disabled = !!all; });
+      const n = selected().length;
+      if (filters) filters.hidden = !!all || n > 0;
+      if (hint) {
+        hint.textContent = all ? `Sending to all ${items.length} contacts.`
+          : n ? `Sending to ${n} chosen contact${n > 1 ? 's' : ''}.`
+          : 'Type to find people, choose “All contacts”, or leave empty and use the filters below.';
+      }
+      renderChips();
+    }
+
+    function options() {
       const q = search.value.trim().toLowerCase();
-      rows.forEach((r) => { r.hidden = q && !r.dataset.pickText.includes(q); });
-    });
-    const all = form.querySelector('[data-pick-all]');
-    const none = form.querySelector('[data-pick-none]');
-    if (all) all.addEventListener('click', () => { visible().forEach((r) => { r.querySelector('input').checked = true; }); updateCount(); });
-    if (none) none.addEventListener('click', () => { rows.forEach((r) => { r.querySelector('input').checked = false; }); updateCount(); });
-    form.addEventListener('change', updateCount);
-    form.addEventListener('submit', (e) => {
-      const chosen = (form.querySelector('input[name=audience]:checked') || {}).value;
-      if (chosen === 'pick' && rows.length && !rows.some((r) => r.querySelector('input').checked)) {
-        e.preventDefault();
-        window.alert('Please choose at least one contact.');
+      const list = items.filter((i) => !i.input.checked && (!q || matches(i, q))).slice(0, 50);
+      return { q, list };
+    }
+
+    function openDropdown() {
+      const { q, list } = options();
+      dropdown.innerHTML = '';
+      const buttons = [];
+      if (!q) {
+        const all = el('button', 'all-option', `All contacts (${items.length})`);
+        all.type = 'button';
+        all.addEventListener('click', () => { if (allBox) allBox.checked = true; closeDropdown(); update(); });
+        buttons.push(all);
+      }
+      for (const it of list) {
+        const b = el('button');
+        b.type = 'button';
+        const left = el('span');
+        left.appendChild(el('strong', '', it.name));
+        if (it.sub) left.appendChild(el('span', 'muted small', ` ${it.sub}`));
+        b.appendChild(left);
+        b.appendChild(el('span', 'muted small', it.contact));
+        b.addEventListener('click', () => { it.input.checked = true; search.value = ''; update(); openDropdown(); search.focus(); });
+        buttons.push(b);
+      }
+      if (!buttons.length) dropdown.appendChild(el('div', 'empty', 'No matching contacts'));
+      buttons.forEach((b) => dropdown.appendChild(b));
+      active = -1;
+      dropdown.hidden = false;
+    }
+    function closeDropdown() { dropdown.hidden = true; active = -1; }
+    function move(step) {
+      const btns = $$('button', dropdown);
+      if (!btns.length) return;
+      active = (active + step + btns.length) % btns.length;
+      btns.forEach((b, i) => b.classList.toggle('active', i === active));
+      btns[active].scrollIntoView({ block: 'nearest' });
+    }
+
+    search.addEventListener('focus', openDropdown);
+    search.addEventListener('input', openDropdown);
+    search.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (dropdown.hidden) openDropdown(); move(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
+      else if (e.key === 'Enter') {
+        e.preventDefault(); // never submit the form from the search box
+        const btns = $$('button', dropdown);
+        const target = btns[active] || (search.value.trim() && btns.find((b) => !b.classList.contains('all-option')));
+        if (target) target.click();
+      } else if (e.key === 'Escape') closeDropdown();
+      else if (e.key === 'Backspace' && !search.value) {
+        const last = selected().pop();
+        if (last) { last.input.checked = false; update(); }
       }
     });
-    updateCount();
+    document.addEventListener('click', (e) => {
+      // A clicked option is re-rendered (detached) before this runs; that is not an outside click.
+      if (e.target.isConnected && !form.querySelector('.recipients').contains(e.target)) closeDropdown();
+    });
+    box.addEventListener('click', (e) => { if (e.target === box) search.focus(); });
+    if (allBox) allBox.addEventListener('change', update);
+    update();
   });
 
   // Money parsing for live totals (accepts 1.234,56 and 1,234.56).

@@ -317,6 +317,7 @@ test('campaign recipients: all contacts, chosen contacts, or filters', async () 
 
   const page = await agent.get('/comms/compose?channel=email');
   assert.match(page.text, /All contacts/);
+  assert.doesNotMatch(page.text, /Send to/);
   assert.match(page.text, /Aaron/);
   assert.doesNotMatch(page.text, /NoMail/);
 
@@ -335,6 +336,17 @@ test('campaign recipients: all contacts, chosen contacts, or filters', async () 
   outbox.length = 0;
   await agent.postForm('/comms/send', { channel: 'email', audience: 'filter', q: 'Aaron', familyIds: [String(b)], subject: 'S', body: 'B' });
   assert.deepEqual(outbox.map((m) => m.to), ['a@example.org']);
+
+  // The compose form itself sends all=1 or the picked familyIds (no explicit audience).
+  outbox.length = 0;
+  await agent.postForm('/comms/send', { channel: 'email', all: '1', familyIds: [String(a)], subject: 'S', body: 'B' });
+  assert.equal(outbox.length, 2);
+  outbox.length = 0;
+  await agent.postForm('/comms/send', { channel: 'email', familyIds: [String(a)], subject: 'S', body: 'B' });
+  assert.deepEqual(outbox.map((m) => m.to), ['a@example.org']);
+  outbox.length = 0;
+  await agent.postForm('/comms/send', { channel: 'email', q: 'Baruch', subject: 'S', body: 'B' });
+  assert.deepEqual(outbox.map((m) => m.to), ['b@example.org']);
 
   // Many chosen contacts survive form parsing.
   const ids = [a, b];

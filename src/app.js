@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -25,6 +27,14 @@ import apiRoutes from './routes/api.js';
 import webhookRoutes from './routes/webhooks.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+const publicDir = path.join(here, '..', 'public');
+
+// Fingerprint of the CSS/JS so browsers fetch new versions right after an update.
+function assetVersion() {
+  const hash = crypto.createHash('sha1');
+  for (const f of ['css/app.css', 'js/app.js']) hash.update(fs.readFileSync(path.join(publicDir, f)));
+  return hash.digest('hex').slice(0, 10);
+}
 
 export function createApp(db) {
   const app = express();
@@ -53,7 +63,8 @@ export function createApp(db) {
 
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
   app.use(express.json({ limit: '1mb' }));
-  app.use('/static', express.static(path.join(here, '..', 'public'), { maxAge: config.isProd ? '7d' : 0 }));
+  app.locals.assetVersion = assetVersion();
+  app.use('/static', express.static(publicDir, { maxAge: config.isProd ? '7d' : 0 }));
 
   app.use(
     session({

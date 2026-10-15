@@ -1,44 +1,39 @@
 <%- include('../partials/header') %>
 <% const contactLabel = channel === 'email' ? 'email' : 'mobile number'; %>
 <h1>New <%= { email: 'email campaign', sms: 'SMS campaign', call: 'robo-call' }[channel] %></h1>
-<form method="post" action="/comms/preview" class="card form" data-audience-form>
+<form method="post" action="/comms/preview" class="card form" data-recipients-form>
   <%- include('../partials/csrf') %>
   <input type="hidden" name="channel" value="<%= channel %>">
 
-  <fieldset>
-    <legend>Send to</legend>
-    <div class="audience-options">
-      <label class="inline"><input type="radio" name="audience" value="all" <%= audience === 'all' ? 'checked' : '' %>>
-        <strong>All contacts</strong>&nbsp;<span class="muted">(<%= contacts.length %> with an <%= contactLabel %>)</span></label>
-      <label class="inline"><input type="radio" name="audience" value="pick" <%= audience === 'pick' ? 'checked' : '' %>>
-        <strong>Choose contacts</strong></label>
-      <label class="inline"><input type="radio" name="audience" value="filter" <%= audience === 'filter' ? 'checked' : '' %>>
-        <strong>By category / filter</strong></label>
-    </div>
-
-    <div data-audience-panel="pick">
-      <div class="picker-bar">
-        <input type="search" placeholder="Type to find a contact…" data-pick-search aria-label="Find a contact">
-        <button type="button" class="btn btn-small btn-light" data-pick-all>Select all</button>
-        <button type="button" class="btn btn-small btn-light" data-pick-none>Clear</button>
-        <span class="small muted"><strong data-pick-count>0</strong> selected</span>
-      </div>
-      <div class="picker" data-picker>
-        <% for (const c of contacts) { %>
-          <label class="pick-row" data-pick-text="<%= `${c.family_name} ${c.salutation || ''} ${c.contact}`.toLowerCase() %>">
-            <input type="checkbox" name="familyIds" value="<%= c.id %>" <%= criteria.familyIds.includes(c.id) ? 'checked' : '' %>>
-            <span><strong><%= c.family_name %></strong> <span class="muted small"><%= c.salutation || '' %></span></span>
-            <span class="small muted pick-contact"><%= c.contact %></span>
-          </label>
-        <% } %>
-        <% if (!contacts.length) { %><p class="muted">No contacts have an <%= contactLabel %> yet.</p><% } %>
+  <div class="recipients">
+    <label for="recipient-search">To</label>
+    <div class="recipient-box">
+      <div class="chips" data-chips></div>
+      <div class="combo">
+        <input id="recipient-search" type="search" autocomplete="off" placeholder="Type a name or <%= contactLabel %>…" data-recipient-search>
+        <div class="dropdown" data-dropdown hidden></div>
       </div>
     </div>
+    <label class="inline all-toggle"><input type="checkbox" name="all" value="1" data-all-contacts>
+      <strong>All contacts</strong>&nbsp;<span class="muted">(<%= contacts.length %> with an <%= contactLabel %>)</span></label>
+    <p class="small muted" data-recipient-hint>Pick people from the list, tick “All contacts”, or leave empty and use the filters below.</p>
 
-    <div data-audience-panel="filter">
-      <%- include('../partials/criteria', { criteria, categories, affiliations, sources, cities }) %>
+    <%# Plain checkbox list: used as-is without JavaScript, otherwise it feeds the dropdown. %>
+    <div class="picker" data-picker>
+      <% for (const c of contacts) { %>
+        <label class="pick-row" data-id="<%= c.id %>" data-name="<%= c.family_name %>" data-sub="<%= c.salutation || '' %>" data-contact="<%= c.contact %>">
+          <input type="checkbox" name="familyIds" value="<%= c.id %>">
+          <span><strong><%= c.family_name %></strong> <span class="muted small"><%= c.salutation || '' %></span></span>
+          <span class="small muted"><%= c.contact %></span>
+        </label>
+      <% } %>
     </div>
-  </fieldset>
+  </div>
+
+  <details class="more-filters" data-filters>
+    <summary>Filter by category, priority, city…</summary>
+    <%- include('../partials/criteria', { criteria, categories, affiliations, sources, cities, hideSearch: true }) %>
+  </details>
 
   <% if (channel === 'email') { %><label>Subject *<input name="subject" required></label><% } %>
   <% if (channel === 'call') { %><label>Recorded audio URL (optional — otherwise the text is read aloud)<input name="audio_url" type="url" placeholder="https://…/message.mp3"></label><% } %>
