@@ -40,9 +40,34 @@ router.post('/users/:id', (req, res) => {
   const role = oneOf(req.body.role, ROLES, u.role);
   const active = bool(req.body.active);
   if (u.id === req.user.id && (role !== 'admin' || !active)) throw httpError(400, 'You cannot remove your own admin access');
+  if (isLastAdmin(db, u) && (role !== 'admin' || !active)) throw httpError(400, 'There must always be at least one active admin');
   db.prepare('UPDATE users SET role = ?, active = ?, name = COALESCE(?, name) WHERE id = ?').run(role, active, str(req.body.name), u.id);
   audit(db, req.user, 'update', 'user', u.id, { role, active });
   req.flash('success', `${u.email} updated.`);
+  res.redirect('/admin/users');
+});
+
+function isLastAdmin(db, u) {
+  if (u.role !== 'admin' || !u.active) return false;
+  return db.prepare("SELECT COUNT(*) n FROM users WHERE role = 'admin' AND active = 1").get().n <= 1;
+}
+
+router.post('/users/:id/delete', (req, res) => {
+  const db = req.app.get('db');
+  const u = mustGet(db, 'users', req.params.id);
+  if (u.id === req.user.id) throw httpError(400, 'You cannot delete your own account');
+  if (isLastAdmin(db, u)) throw httpError(400, 'There must always be at least one active admin');
+  db.transaction(() => {
+    // Keep the records this user created; just forget who created them.
+    db.prepare('UPDATE payments SET created_by = NULL WHERE created_by = ?').run(u.id);
+    db.prepare('UPDATE campaigns SET created_by = NULL WHERE created_by = ?').run(u.id);
+    db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
+  })();
+  audit(db, req.user, 'delete', 'user', u.id, { email: u.email, role: u.role });
+  const inEnv = config.adminEmails.includes(u.email.toLowerCase());
+  req.flash(inEnv ? 'warning' : 'success', inEnv
+    ? `${u.email} deleted, but this email is listed in ADMIN_EMAILS on the server, so it will become admin again on its next sign-in. Remove it from /opt/crm/.env to block it.`
+    : `${u.email} deleted. They can no longer sign in.`);
   res.redirect('/admin/users');
 });
 

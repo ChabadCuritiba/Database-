@@ -19,7 +19,12 @@
     <td><select name="role" form="u<%= u.id %>"><% for (const r of roles) { %><option <%= u.role === r ? 'selected' : '' %>><%= r %></option><% } %></select></td>
     <td><input type="checkbox" name="active" value="1" <%= u.active ? 'checked' : '' %> form="u<%= u.id %>"></td>
     <td class="small"><%= u.last_login || 'never' %></td>
-    <td><form method="post" action="/admin/users/<%= u.id %>" id="u<%= u.id %>"><%- include('../partials/csrf') %><button class="btn btn-small">Save</button></form></td>
+    <td class="nowrap">
+      <form method="post" action="/admin/users/<%= u.id %>" id="u<%= u.id %>" class="inline"><%- include('../partials/csrf') %><button class="btn btn-small">Save</button></form>
+      <% if (u.id !== user.id) { %>
+      <form method="post" action="/admin/users/<%= u.id %>/delete" class="inline" data-confirm="Delete <%= u.email %>? They will no longer be able to sign in."><%- include('../partials/csrf') %><button class="btn btn-small btn-danger">Delete</button></form>
+      <% } %>
+    </td>
   </tr>
   <% } %>
 </table>

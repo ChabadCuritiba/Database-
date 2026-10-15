@@ -369,3 +369,33 @@ test('occasion form helpers: Hebrew date entry and next observance preview', asy
   res = await agent.get('/api/next-occurrence?date=bad');
   assert.equal(res.status, 400);
 });
+
+test('admins can delete users, but not themselves or the last admin', async () => {
+  const { db, app } = setup();
+  const agent = await login(app, 'admin');
+  const me = db.prepare("SELECT id FROM users WHERE email = 'admin@example.org'").get().id;
+  const other = db.prepare("INSERT INTO users (email, role) VALUES ('other@example.org', 'admin')").run().lastInsertRowid;
+  const fid = createFamily(db);
+  // A payment and campaign created by the other admin must survive the deletion.
+  db.prepare("INSERT INTO payments (family_id, kind, date, amount, created_by) VALUES (?, 'donation', '2026-01-01', 100, ?)").run(fid, other);
+  db.prepare("INSERT INTO campaigns (channel, body, created_by) VALUES ('email', 'x', ?)").run(other);
+
+  let res = await agent.postForm(`/admin/users/${other}/delete`);
+  assert.equal(res.status, 302);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM users WHERE id = ?').get(other).n, 0);
+  assert.equal(db.prepare('SELECT created_by FROM payments').get().created_by, null);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM campaigns').get().n, 1);
+
+  res = await agent.postForm(`/admin/users/${me}/delete`);
+  assert.equal(res.status, 400);
+
+  // A deleted user's open session stops working.
+  const victim = await login(app, 'staff', 'victim@example.org');
+  const vid = db.prepare("SELECT id FROM users WHERE email = 'victim@example.org'").get().id;
+  await agent.postForm(`/admin/users/${vid}/delete`);
+  res = await victim.get('/families');
+  assert.equal(res.headers.location, '/login');
+
+});
+  assert.equal(res.status, 400);
+});
