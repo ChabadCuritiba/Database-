@@ -42,6 +42,15 @@
       div.appendChild(document.createTextNode(' '));
       div.appendChild(a);
     }
+    if (who !== 'me' && synth) {
+      const replay = document.createElement('button');
+      replay.type = 'button';
+      replay.className = 'replay';
+      replay.setAttribute('aria-label', 'Ouvir');
+      replay.textContent = '🔊';
+      replay.addEventListener('click', () => { div.classList.remove('needs-tap'); say(text, div); });
+      div.appendChild(replay);
+    }
     chat.appendChild(div);
     scroll();
     return div;
@@ -58,22 +67,54 @@
   }
 
   // --- Speech out ---
-  function speak(text, viaVoice) {
+  const synth = window.speechSynthesis;
+  let voiceUnlocked = false;
+  // Chrome only lets a page speak after the user has touched it once: "unlock" on first touch.
+  function unlockVoice() {
+    if (voiceUnlocked || !synth) return;
+    voiceUnlocked = true;
+    try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; synth.speak(u); } catch { /* ignore */ }
+  }
+  ['pointerdown', 'keydown', 'touchstart'].forEach((ev) => document.addEventListener(ev, unlockVoice, { once: true, capture: true }));
+
+  function pickVoice() {
+    const want = langSel.value.slice(0, 2);
+    const voices = synth.getVoices();
+    return voices.find((v) => v.lang && v.lang.replace('_', '-') === langSel.value)
+      || voices.find((v) => v.lang && v.lang.replace('_', '-').startsWith(want));
+  }
+
+  /** Reads text aloud. Resolves when done; marks the bubble if the phone blocked it. */
+  function say(text, bubbleEl) {
+    if (!synth || !text) return Promise.resolve();
+    return new Promise((resolve) => {
+      speaking = true;
+      stopAll(); // release the microphone: phones mute speech while it is listening
+      setTimeout(() => {
+        try { synth.cancel(); if (synth.paused) synth.resume(); } catch { /* ignore */ }
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = langSel.value;
+        const voice = pickVoice();
+        if (voice) u.voice = voice;
+        let started = false;
+        const finish = () => { clearTimeout(guard); resolve(); };
+        u.onstart = () => { started = true; };
+        u.onend = finish;
+        u.onerror = (e) => {
+          if (e.error === 'not-allowed' && bubbleEl) bubbleEl.classList.add('needs-tap');
+          finish();
+        };
+        // If speech never starts (blocked), stop waiting and offer the 🔊 button.
+        const guard = setTimeout(() => { if (!started) { if (bubbleEl) bubbleEl.classList.add('needs-tap'); try { synth.cancel(); } catch { /* ignore */ } resolve(); } }, 3000);
+        synth.speak(u);
+      }, 250);
+    }).finally(() => { speaking = false; resumeListening(); });
+  }
+
+  function speak(text, viaVoice, bubbleEl) {
     const mode = speakBox.value;
     if (mode === 'never' || (mode === 'voice' && !viaVoice)) return Promise.resolve();
-    if (!('speechSynthesis' in window) || !text) return Promise.resolve();
-    return new Promise((resolve) => {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = langSel.value;
-      const voice = speechSynthesis.getVoices().find((v) => v.lang && v.lang.replace('_', '-').startsWith(langSel.value.slice(0, 2)));
-      if (voice) u.voice = voice;
-      u.onend = resolve;
-      u.onerror = resolve;
-      speaking = true;
-      pauseListening();
-      speechSynthesis.speak(u);
-    }).finally(() => { speaking = false; resumeListening(); });
+    return say(text, bubbleEl);
   }
 
   // --- Talking to the server ---
@@ -90,11 +131,11 @@
     return data;
   }
   async function handle(result, viaVoice) {
-    if (result.error) { bubble(result.error, 'buggy'); setStatus(''); return speak(result.error, viaVoice); }
-    bubble(result.reply, 'buggy', result.links);
+    if (result.error) { const b = bubble(result.error, 'buggy'); setStatus(''); return speak(result.error, viaVoice, b); }
+    const b = bubble(result.reply, 'buggy', result.links);
     showPending(result.pending);
     setStatus(result.pending && result.pending.length ? (viaVoice ? 'Diga “sim” para salvar ou “não” para cancelar.' : 'Toque em “Sim, salvar” ou “Cancelar”.') : '');
-    await speak(result.reply, viaVoice);
+    await speak(result.reply, viaVoice, b);
   }
   // Progress steps, in the language chosen on the page.
   const STEPS = {
@@ -179,13 +220,14 @@
       setStatus('');
     } finally {
       busy = false;
+      resumeListening();
     }
   }
   async function decide(decision, viaVoice = false) {
     if (busy) return;
     busy = true;
     bubble(decision === 'yes' ? 'Sim' : 'Não', 'me');
-    try { await handle(await post('/assistant/confirm', { decision }), viaVoice); } finally { busy = false; }
+    try { await handle(await post('/assistant/confirm', { decision }), viaVoice); } finally { busy = false; resumeListening(); }
   }
 
   $('[data-composer]').addEventListener('submit', (e) => {
@@ -279,11 +321,11 @@
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (!e.results[i].isFinal) continue;
         const said = e.results[i][0].transcript.trim();
-        if (awaitingCommand) { awaitingCommand = false; routeSpeech(said); continue; }
+        if (awaitingCommand) { awaitingCommand = false; stopAll(); routeSpeech(said); continue; }
         const m = said.match(WAKE);
         if (!m) continue;
         const command = said.slice(m.index + m[0].length).trim();
-        if (command) routeSpeech(command);
+        if (command) { stopAll(); routeSpeech(command); }
         else { awaitingCommand = true; setStatus('Sim? Estou ouvindo…'); beep(); }
       }
     };
@@ -302,7 +344,7 @@
     if (rec) { rec.onend = null; try { rec.abort(); } catch { /* ignore */ } rec = null; }
   }
   function pauseListening() { if (wakeMode) stopAll(); }
-  function resumeListening() { if (wakeMode && !speaking && !listening) setTimeout(startWake, 400); }
+  function resumeListening() { if (wakeMode && !speaking && !listening && !busy) setTimeout(startWake, 400); }
   function restartListening() { if (wakeMode) { stopAll(); startWake(); } }
 
   function beep() {
