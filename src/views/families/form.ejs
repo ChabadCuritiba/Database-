@@ -1,0 +1,56 @@
+<%- include('../partials/header') %>
+<h1><%= title %></h1>
+<% const custom = JSON.parse(family.custom_fields || '{}'); const ro = limited ? 'readonly' : ''; %>
+<% if (limited) { %><p class="flash flash-info">You can update contact details (phone, email and address). Other fields are read-only.</p><% } %>
+<form method="post" action="<%= family.id ? `/families/${family.id}` : '/families' %>" class="card form">
+  <%- include('../partials/csrf') %>
+  <fieldset><legend>Household</legend>
+    <div class="grid3">
+      <label>Family name *<input name="family_name" value="<%= family.family_name %>" required <%= ro %>></label>
+      <label>Salutation<input name="salutation" value="<%= family.salutation %>" placeholder="Mr. &amp; Mrs. Cohen" <%= ro %>></label>
+      <label>Hebrew family name<input name="hebrew_name" value="<%= family.hebrew_name %>" dir="auto" <%= ro %>></label>
+      <% if (!family.id) { %><label>Primary contact first name<input name="first_name"></label><% } %>
+    </div>
+  </fieldset>
+  <fieldset><legend>Contact</legend>
+    <div class="grid3">
+      <label>Email<input type="email" name="email" value="<%= family.email %>"></label>
+      <label>Mobile (WhatsApp/SMS)<input name="mobile" value="<%= family.mobile %>" placeholder="(41) 99999-9999"></label>
+      <label>Home phone<input name="phone" value="<%= family.phone %>"></label>
+    </div>
+  </fieldset>
+  <fieldset><legend>Address</legend>
+    <div class="grid4">
+      <label>CEP<input name="cep" value="<%= formatCep(family.cep) %>" data-cep placeholder="00000-000"><small class="muted" data-cep-status></small></label>
+      <label class="span2">Street<input name="street" value="<%= family.street %>"></label>
+      <label>Number<input name="number" value="<%= family.number %>"></label>
+      <label>Complement<input name="complement" value="<%= family.complement %>"></label>
+      <label>Neighborhood<input name="neighborhood" value="<%= family.neighborhood %>"></label>
+      <label>City<input name="city" value="<%= family.city %>"></label>
+      <label>State<input name="state" value="<%= family.state %>" maxlength="30"></label>
+      <label>Country<input name="country" value="<%= family.country %>"></label>
+    </div>
+  </fieldset>
+  <fieldset <%= limited ? 'disabled' : '' %>><legend>Organization</legend>
+    <div class="grid3">
+      <label>Affiliation<input name="affiliation" value="<%= family.affiliation %>" list="affiliations" placeholder="member, friend, alumni…"></label>
+      <label>Priority
+        <select name="priority"><% for (let p = 1; p <= 5; p++) { %><option value="<%= p %>" <%= family.priority == p ? 'selected' : '' %>><%= p %><%= p === 1 ? ' – highest' : p === 5 ? ' – lowest' : '' %></option><% } %></select>
+      </label>
+      <label>Source<input name="source" value="<%= family.source %>" placeholder="Shabbat dinner, website, referral…"></label>
+      <label>CPF / CNPJ (for receipts)<input name="tax_id" value="<%= family.tax_id %>"></label>
+      <% for (const d of defs) { %>
+        <label><%= d.label %><input name="custom_<%= d.key %>" value="<%= custom[d.key] || '' %>"></label>
+      <% } %>
+    </div>
+    <div class="checks">
+      <label class="inline"><input type="checkbox" name="no_mail" value="1" <%= family.no_mail ? 'checked' : '' %>> No postal mail</label>
+      <label class="inline"><input type="checkbox" name="no_email" value="1" <%= family.no_email ? 'checked' : '' %>> No email</label>
+      <label class="inline"><input type="checkbox" name="no_sms" value="1" <%= family.no_sms ? 'checked' : '' %>> No SMS / calls</label>
+    </div>
+    <label>Notes<textarea name="notes" rows="3"><%= family.notes %></textarea></label>
+  </fieldset>
+  <datalist id="affiliations"><option>Member</option><option>Friend</option><option>Alumni</option><option>Student</option><option>Tourist</option><option>Donor</option></datalist>
+  <button class="btn">Save</button> <a href="<%= family.id ? `/families/${family.id}` : '/families' %>">Cancel</a>
+</form>
+<%- include('../partials/footer') %>

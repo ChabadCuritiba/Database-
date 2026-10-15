@@ -1,0 +1,30 @@
+<%- include('../partials/header') %>
+<h1>Settings &amp; templates</h1>
+<%- include('_nav') %>
+<form method="post" class="card form">
+  <%- include('../partials/csrf') %>
+  <fieldset><legend>Organization (letterhead &amp; receipts)</legend>
+    <div class="grid3">
+      <label>Name<input name="org_name" value="<%= s.org_name %>"></label>
+      <label>CNPJ / Tax ID<input name="org_tax_id" value="<%= s.org_tax_id %>"></label>
+      <label>Phone<input name="org_phone" value="<%= s.org_phone %>"></label>
+      <label class="span2">Address<input name="org_address" value="<%= s.org_address %>"></label>
+      <label>Email<input name="org_email" value="<%= s.org_email %>"></label>
+      <label>Signature name<input name="signature_name" value="<%= s.signature_name %>"></label>
+      <label>Signature title<input name="signature_title" value="<%= s.signature_title %>"></label>
+    </div>
+  </fieldset>
+  <fieldset><legend>Templates</legend>
+    <label>Receipt footer<textarea name="receipt_footer" rows="2"><%= s.receipt_footer %></textarea></label>
+    <label>Thank-you letter <small class="muted">{{salutation}} {{amount}} {{date}} {{fund}} {{receipt_number}} {{org_name}}</small><textarea name="thank_you_body" rows="7"><%= s.thank_you_body %></textarea></label>
+    <label>Yahrzeit letter <small class="muted">{{salutation}} {{name}} {{hebrew_name}} {{hebrew_date}} {{hebrew_date_he}} {{gregorian_date}} {{eve_date}} {{years}} {{relationship}}</small><textarea name="yahrzeit_body" rows="9"><%= s.yahrzeit_body %></textarea></label>
+    <label>Reminder email subject<input name="reminder_email_subject" value="<%= s.reminder_email_subject %>"></label>
+    <label>Reminder email / SMS text <small class="muted">{{type}} {{name}} {{hebrew_date}} {{gregorian_date}} {{eve_date}} {{years}}</small><textarea name="reminder_body" rows="6"><%= s.reminder_body %></textarea></label>
+  </fieldset>
+  <fieldset><legend>Custom contact fields</legend>
+    <label>One per line, e.g. <code>kashrut: Keeps kosher</code> or <code>Shul seat</code>
+      <textarea name="custom_fields" rows="4"><%= defs.map((d) => `${d.key}: ${d.label}`).join('\n') %></textarea></label>
+  </fieldset>
+  <button class="btn">Save settings</button>
+</form>
+<%- include('../partials/footer') %>

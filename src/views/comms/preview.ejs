@@ -1,0 +1,25 @@
+<%- include('../partials/header') %>
+<h1>Review <%= channel %> campaign</h1>
+<form method="post" action="/comms/send" class="card" data-confirm="Send to <%= total %> recipients now?">
+  <%- include('../partials/csrf') %>
+  <input type="hidden" name="channel" value="<%= channel %>">
+  <% for (const [k, v] of Object.entries(criteria)) { if (k === 'require') continue; for (const val of [].concat(v)) { if (val === '' || val === null) continue; %>
+    <input type="hidden" name="<%= k %>" value="<%= val %>">
+  <% } } %>
+  <input type="hidden" name="subject" value="<%= body.subject || '' %>">
+  <input type="hidden" name="audio_url" value="<%= body.audio_url || '' %>">
+  <textarea name="body" hidden><%= body.body %></textarea>
+  <p><strong><%= total %></strong> recipients.</p>
+  <% if (body.subject) { %><p><strong>Subject:</strong> <%= body.subject %></p><% } %>
+  <h3>Sample (first recipient)</h3>
+  <pre class="sample"><%= sample %></pre>
+  <button class="btn" <%= total ? '' : 'disabled' %>>Send now</button>
+  <a href="/comms" data-back>Back</a>
+</form>
+<section class="card">
+  <h2>Recipients<%= total > rows.length ? ` (first ${rows.length})` : '' %></h2>
+  <table class="table small">
+    <% for (const f of rows) { %><tr><td><%= f.family_name %></td><td><%= channel === 'email' ? f.email : f.mobile %></td></tr><% } %>
+  </table>
+</section>
+<%- include('../partials/footer') %>

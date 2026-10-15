@@ -1,0 +1,25 @@
+<%- include('../partials/header') %>
+<h1>Print mailings</h1>
+<p class="muted">Contacts with a postal address and without the “no postal mail” flag. Currently matching: <strong><%= total %></strong>.</p>
+<form method="post" class="card form">
+  <%- include('../partials/csrf') %>
+  <%- include('../partials/criteria', { criteria, categories, affiliations, sources, cities }) %>
+  <fieldset><legend>Labels</legend>
+    <div class="grid3">
+      <label>Sheet<select name="layout"><% for (const [k, l] of Object.entries(layouts)) { %><option value="<%= k %>"><%= l.name %></option><% } %></select></label>
+      <label>Start at label #<input type="number" name="start_at" value="1" min="1"></label>
+    </div>
+    <button class="btn" name="kind" value="labels">Download labels (PDF)</button>
+  </fieldset>
+  <fieldset><legend>Envelopes</legend>
+    <label class="w-md">Size<select name="envelope"><% for (const [k, e] of Object.entries(envelopes)) { %><option value="<%= k %>"><%= e.name %></option><% } %></select></label>
+    <button class="btn" name="kind" value="envelopes">Download envelopes (PDF)</button>
+  </fieldset>
+  <fieldset><legend>Merged letters</legend>
+    <label>Letter text<textarea name="letter_body" rows="8" placeholder="Dear {{salutation}},&#10;&#10;…"></textarea></label>
+    <p class="small muted">Merge fields: {{salutation}}, {{family_name}}, {{hebrew_name}}, {{city}}, {{address}}, {{org_name}}</p>
+    <button class="btn" name="kind" value="letters-docx">Download for Microsoft Word (.docx)</button>
+    <button class="btn btn-light" name="kind" value="letters-pdf">Download PDF</button>
+  </fieldset>
+</form>
+<%- include('../partials/footer') %>

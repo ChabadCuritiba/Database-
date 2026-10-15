@@ -1,0 +1,42 @@
+<%- include('../partials/header') %>
+<h1>Categories</h1>
+<p class="muted">Categories can be nested (e.g. <em>Mailings › Pesach appeal</em>). Filtering by a category includes its sub-categories.</p>
+<div class="cols">
+<section class="card">
+  <table class="table">
+    <thead><tr><th>Category</th><th class="num">Contacts</th><% if (can('contacts.write')) { %><th>Edit</th><% } %></tr></thead>
+    <% for (const c of tree) { %>
+    <tr>
+      <td class="depth-<%= c.depth %>"><a href="/families?categories=<%= c.id %>"><%= c.name %></a></td>
+      <td class="num"><%= counts[c.id] || 0 %></td>
+      <% if (can('contacts.write')) { %>
+      <td>
+        <details><summary>edit</summary>
+          <form method="post" action="/categories/<%= c.id %>" class="inline-form">
+            <%- include('../partials/csrf') %>
+            <input name="name" value="<%= c.name %>">
+            <select name="parent_id"><option value="">(top level)</option><% for (const p of tree) { if (p.id === c.id) continue; %><option value="<%= p.id %>" <%= c.parent_id === p.id ? 'selected' : '' %>><%= p.path %></option><% } %></select>
+            <button class="btn btn-small">Save</button>
+          </form>
+          <form method="post" action="/categories/<%= c.id %>/delete" data-confirm="Delete '<%= c.name %>' and its sub-categories?"><%- include('../partials/csrf') %><button class="btn btn-small btn-danger">Delete</button></form>
+        </details>
+      </td>
+      <% } %>
+    </tr>
+    <% } %>
+    <% if (!tree.length) { %><tr><td colspan="3" class="muted">No categories yet.</td></tr><% } %>
+  </table>
+</section>
+<% if (can('contacts.write')) { %>
+<section class="card">
+  <h2>New category</h2>
+  <form method="post" action="/categories" class="form">
+    <%- include('../partials/csrf') %>
+    <label>Name<input name="name" required></label>
+    <label>Parent<select name="parent_id"><option value="">(top level)</option><% for (const p of tree) { %><option value="<%= p.id %>"><%= p.path %></option><% } %></select></label>
+    <button class="btn">Create</button>
+  </form>
+</section>
+<% } %>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,147 @@
+<%- include('../partials/header') %>
+<div class="pagehead">
+  <div>
+    <h1><%= family.family_name %> <% if (family.hebrew_name) { %><span class="he" dir="rtl"><%= family.hebrew_name %></span><% } %></h1>
+    <div class="muted"><%= salutationOf(family) %> · priority <span class="prio prio-<%= family.priority %>"><%= family.priority %></span>
+      <%= family.affiliation ? ' · ' + family.affiliation : '' %><%= family.source ? ' · source: ' + family.source : '' %></div>
+  </div>
+  <div class="actions">
+    <% if (can('contacts.contact_info')) { %><a class="btn" href="/families/<%= family.id %>/edit">Edit</a><% } %>
+    <% if (can('finance.write')) { %><a class="btn btn-light" href="/finance/donations/new?family_id=<%= family.id %>">+ Donation</a>
+      <a class="btn btn-light" href="/finance/pledges/new?family_id=<%= family.id %>">+ Pledge</a><% } %>
+    <% if (can('orders.write')) { %><a class="btn btn-light" href="/orders/new?family_id=<%= family.id %>">+ Order</a><% } %>
+  </div>
+</div>
+
+<div class="cols">
+  <section class="card">
+    <h2>Contact</h2>
+    <dl class="dl">
+      <dt>Email</dt><dd><%= family.email || '–' %><%= family.no_email ? ' (no email)' : '' %></dd>
+      <dt>Mobile</dt><dd><%= family.mobile || '–' %><%= family.no_sms ? ' (no SMS)' : '' %></dd>
+      <dt>Phone</dt><dd><%= family.phone || '–' %></dd>
+      <dt>Address</dt><dd><% const addr = formatAddress(family); for (const l of addr) { %><%= l %><br><% } %><%= addr.length ? '' : '–' %><%= family.no_mail ? ' (no mail)' : '' %></dd>
+      <% if (family.tax_id && can('finance.read')) { %><dt>CPF/CNPJ</dt><dd><%= family.tax_id %></dd><% } %>
+      <% for (const d of defs) { if (custom[d.key]) { %><dt><%= d.label %></dt><dd><%= custom[d.key] %></dd><% } } %>
+    </dl>
+    <% if (family.notes) { %><p class="notes"><%= family.notes %></p><% } %>
+  </section>
+
+  <section class="card">
+    <h2>Categories</h2>
+    <p><% for (const c of categories) { %><span class="tag"><%= c.name %></span> <% } %><% if (!categories.length) { %><span class="muted">None</span><% } %></p>
+    <% if (can('contacts.write') && tree.length) { %>
+    <details><summary>Change categories</summary>
+      <form method="post" action="/families/<%= family.id %>/categories">
+        <%- include('../partials/csrf') %>
+        <div class="catlist">
+        <% const sel = new Set(categories.map((c) => c.id)); for (const c of tree) { %>
+          <label class="inline depth-<%= c.depth %>"><input type="checkbox" name="categories" value="<%= c.id %>" <%= sel.has(c.id) ? 'checked' : '' %>> <%= c.name %></label>
+        <% } %>
+        </div>
+        <button class="btn btn-small">Save categories</button>
+      </form>
+    </details>
+    <% } %>
+  </section>
+</div>
+
+<section class="card">
+  <h2>Family members <% if (can('contacts.write')) { %><a class="btn btn-small btn-light" href="/families/<%= family.id %>/people/new">+ Add person</a><% } %></h2>
+  <table class="table">
+    <thead><tr><th>Name</th><th>Hebrew name</th><th>Relation</th><th>Born</th><th>Contact</th><th></th></tr></thead>
+    <% for (const p of people) { %>
+    <tr class="<%= p.deceased ? 'deceased' : '' %>">
+      <td><%= p.first_name %> <%= p.last_name %><%= p.deceased ? ' ז״ל' : '' %></td>
+      <td dir="auto"><%= p.hebrew_name %><% if (p.father_hebrew_name) { %> <%= p.gender === 'F' ? 'בת' : 'בן' %> <%= p.father_hebrew_name %><% } %><% if (p.lineage && p.lineage !== 'yisrael') { %> <span class="tag"><%= p.lineage %></span><% } %></td>
+      <td><%= p.relation %></td>
+      <td><% if (p.birth_date) { %><%= p.birth_date %><div class="small muted"><%= formatHebrew(toHebrew(p.birth_date, p.birth_after_sunset)).en %></div><% } %></td>
+      <td class="small"><%= p.email %><br><%= p.mobile %></td>
+      <td><% if (can('contacts.write')) { %><a href="/families/<%= family.id %>/people/<%= p.id %>/edit">edit</a><% } %></td>
+    </tr>
+    <% } %>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Occasions & Yahrzeits
+    <% if (can('occasions.write')) { %>
+      <a class="btn btn-small btn-light" href="/occasions/new?family_id=<%= family.id %>&type=yahrzeit">+ Yahrzeit</a>
+      <a class="btn btn-small btn-light" href="/occasions/new?family_id=<%= family.id %>&type=anniversary">+ Anniversary</a>
+      <a class="btn btn-small btn-light" href="/occasions/new?family_id=<%= family.id %>&type=birthday">+ Other</a>
+    <% } %>
+  </h2>
+  <table class="table">
+    <thead><tr><th>Type</th><th>Name</th><th>Original date</th><th>Next observance</th><th>Reminders</th><th></th></tr></thead>
+    <% for (const o of occasions) { const h = formatHebrew(toHebrew(o.gregorian_date, o.after_sunset)); %>
+    <tr>
+      <td><span class="badge badge-<%= o.type %>"><%= OCCASION_LABELS[o.type] %></span></td>
+      <td><%= o.name %> <span class="he" dir="rtl"><%= o.hebrew_name %></span><div class="small muted"><%= o.relationship %></div></td>
+      <td><%= o.gregorian_date %><%= o.after_sunset ? ' (after sunset)' : '' %><div class="small muted"><%= h.en %> · <span dir="rtl"><%= h.he %></span></div></td>
+      <td><% if (o.next) { %><strong><%= o.next.date %></strong><div class="small muted"><%= o.next.hebrew.en %> (<%= o.next.count %> yrs)</div><% } else { %>–<% } %></td>
+      <td class="small"><%= o.remind ? `${o.remind_days_before} days before${o.remind_email ? ' · email' : ''}${o.remind_sms ? ' · SMS' : ''}` : 'off' %></td>
+      <td><% if (can('occasions.write')) { %><a href="/occasions/<%= o.id %>/edit">edit</a><% } %></td>
+    </tr>
+    <% } %>
+    <% if (!occasions.length) { %><tr><td colspan="6" class="muted">No occasions recorded.</td></tr><% } %>
+  </table>
+</section>
+
+<% if (typeof donations !== 'undefined') { %>
+<section class="card">
+  <h2>Giving</h2>
+  <% if (givingByYear.length) { %>
+    <p><% for (const g of givingByYear) { %><span class="tag"><%= g.year %>: <%= formatMoney(g.total) %></span> <% } %></p>
+  <% } %>
+  <% if (pledges.length) { %>
+    <h3>Open pledges</h3>
+    <table class="table">
+      <% for (const p of pledges) { %>
+      <tr><td><%= p.date %></td><td><%= p.fund_name %></td><td class="num"><%= formatMoney(p.amount) %></td><td class="num">balance <%= formatMoney(p.balance) %></td>
+        <td><% if (can('finance.write')) { %><a href="/finance/donations/new?family_id=<%= family.id %>&pledge_id=<%= p.id %>">record payment</a><% } %></td></tr>
+      <% } %>
+    </table>
+  <% } %>
+  <h3>Donations</h3>
+  <table class="table">
+    <thead><tr><th>Date</th><th>Receipt</th><th>Funds</th><th>Method</th><th class="num">Amount</th><th></th></tr></thead>
+    <% for (const d of donations) { %>
+    <tr><td><a href="/finance/donations/<%= d.id %>"><%= d.date %></a></td><td>#<%= d.receipt_number %></td>
+      <td class="small"><%= d.splits.map((s) => s.fund_name).join(', ') %></td><td><%= d.method %></td>
+      <td class="num"><%= formatMoney(d.amount) %></td><td><a href="/finance/donations/<%= d.id %>/receipt.pdf">receipt</a></td></tr>
+    <% } %>
+    <% if (!donations.length) { %><tr><td colspan="6" class="muted">No donations yet.</td></tr><% } %>
+  </table>
+</section>
+<% } %>
+
+<% if (typeof orders !== 'undefined' && orders.length) { %>
+<section class="card">
+  <h2>Orders</h2>
+  <table class="table">
+    <% for (const o of orders) { %>
+    <tr><td><a href="/orders/<%= o.id %>">#<%= o.id %></a></td><td><%= o.date %></td><td><%= o.status %></td><td class="num"><%= formatMoney(o.total) %></td>
+      <td class="num <%= o.paid >= o.total ? 'ok' : 'warn' %>">paid <%= formatMoney(o.paid) %></td></tr>
+    <% } %>
+  </table>
+</section>
+<% } %>
+
+<% if (typeof registrations !== 'undefined' && registrations.length) { %>
+<section class="card">
+  <h2>Event registrations</h2>
+  <table class="table">
+    <% for (const r of registrations) { %>
+    <tr><td><a href="/events/<%= r.event_id %>"><%= r.event_name %></a></td><td><%= r.starts_at.replace('T', ' ') %></td>
+      <td><%= r.adults %> adults, <%= r.students %> students, <%= r.children %> children</td><td><%= r.status %></td></tr>
+    <% } %>
+  </table>
+</section>
+<% } %>
+
+<% if (can('admin')) { %>
+<form method="post" action="/families/<%= family.id %>/delete" data-confirm="Delete <%= family.family_name %> and all related people, occasions, orders and pledges? This cannot be undone.">
+  <%- include('../partials/csrf') %><button class="btn btn-danger btn-small">Delete contact</button>
+</form>
+<% } %>
+<%- include('../partials/footer') %>

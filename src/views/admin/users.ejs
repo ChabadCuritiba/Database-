@@ -1,0 +1,36 @@
+<%- include('../partials/header') %>
+<h1>Users &amp; roles</h1>
+<%- include('_nav') %>
+<div class="card">
+  <p class="small">Users sign in with <strong>Continue with Google</strong>. Only invited emails can enter.</p>
+  <ul class="small">
+    <li><strong>admin</strong> – everything, including users, settings, backups and deletions</li>
+    <li><strong>finance</strong> – contacts, donations, pledges, receipts, orders, events and communications</li>
+    <li><strong>staff</strong> – contacts, occasions, orders, events and communications; <em>no</em> financial records</li>
+    <li><strong>volunteer</strong> – view contacts and update phone numbers, email and addresses only</li>
+  </ul>
+</div>
+<table class="table">
+  <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Active</th><th>Last login</th><th></th></tr></thead>
+  <% for (const u of users) { %>
+  <tr class="<%= u.active ? '' : 'cancelled' %>">
+    <td><%= u.email %></td>
+    <td><input name="name" value="<%= u.name %>" form="u<%= u.id %>"></td>
+    <td><select name="role" form="u<%= u.id %>"><% for (const r of roles) { %><option <%= u.role === r ? 'selected' : '' %>><%= r %></option><% } %></select></td>
+    <td><input type="checkbox" name="active" value="1" <%= u.active ? 'checked' : '' %> form="u<%= u.id %>"></td>
+    <td class="small"><%= u.last_login || 'never' %></td>
+    <td><form method="post" action="/admin/users/<%= u.id %>" id="u<%= u.id %>"><%- include('../partials/csrf') %><button class="btn btn-small">Save</button></form></td>
+  </tr>
+  <% } %>
+</table>
+<form method="post" action="/admin/users" class="card form">
+  <%- include('../partials/csrf') %>
+  <h2>Invite user</h2>
+  <div class="grid3">
+    <label>Google email<input type="email" name="email" required></label>
+    <label>Name<input name="name"></label>
+    <label>Role<select name="role"><% for (const r of roles) { %><option <%= r === 'volunteer' ? 'selected' : '' %>><%= r %></option><% } %></select></label>
+  </div>
+  <button class="btn">Invite</button>
+</form>
+<%- include('../partials/footer') %>

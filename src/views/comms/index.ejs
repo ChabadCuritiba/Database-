@@ -1,0 +1,28 @@
+<%- include('../partials/header') %>
+<div class="pagehead">
+  <h1>Communications</h1>
+  <div class="actions">
+    <a class="btn" href="/comms/compose?channel=email">New email</a>
+    <a class="btn btn-light" href="/comms/compose?channel=sms">New SMS</a>
+    <a class="btn btn-light" href="/comms/compose?channel=call">New robo-call</a>
+    <a class="btn btn-light" href="/comms/print">Labels, envelopes &amp; letters</a>
+  </div>
+</div>
+<section class="card">
+  <h2>Campaigns</h2>
+  <table class="table">
+    <thead><tr><th>#</th><th>Date</th><th>Channel</th><th>Subject / message</th><th class="num">Sent</th><th class="num">Failed</th><th>By</th></tr></thead>
+    <% for (const c of campaigns) { %>
+    <tr><td><a href="/comms/campaigns/<%= c.id %>"><%= c.id %></a></td><td><%= c.created_at.slice(0, 16) %></td><td><%= c.channel %></td>
+      <td><%= c.subject || c.body.slice(0, 60) %></td><td class="num"><%= c.sent_count %></td><td class="num"><%= c.fail_count %></td><td class="small"><%= c.user_name %></td></tr>
+    <% } %>
+    <% if (!campaigns.length) { %><tr><td colspan="7" class="muted">No campaigns yet.</td></tr><% } %>
+  </table>
+</section>
+<section class="card">
+  <h2>Recent messages (incl. automated reminders)</h2>
+  <table class="table small">
+    <% for (const m of log) { %><tr><td><%= m.created_at %></td><td><%= m.channel %></td><td><%= m.recipient %></td><td><%= m.subject %></td><td><span class="badge badge-<%= m.status %>"><%= m.status %></span> <%= m.error || '' %></td></tr><% } %>
+  </table>
+</section>
+<%- include('../partials/footer') %>

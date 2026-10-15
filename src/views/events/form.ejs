@@ -1,0 +1,20 @@
+<%- include('../partials/header') %>
+<h1><%= title %></h1>
+<form method="post" action="<%= event.id ? `/events/${event.id}` : '/events' %>" class="card form">
+  <%- include('../partials/csrf') %>
+  <div class="grid3">
+    <label class="span2">Name *<input name="name" value="<%= event.name %>" required></label>
+    <label>Type<select name="type"><% for (const t of types) { %><option <%= event.type === t ? 'selected' : '' %>><%= t %></option><% } %></select></label>
+    <label>Starts *<input type="datetime-local" name="starts_at" value="<%= event.starts_at %>" required></label>
+    <label>Location<input name="location" value="<%= event.location %>"></label>
+    <label>Capacity (people)<input type="number" name="capacity" value="<%= event.capacity %>" min="1"></label>
+    <label>Price – adult<input name="price_adult" value="<%= event.price_adult ? (event.price_adult / 100).toFixed(2).replace('.', ',') : '' %>" placeholder="0,00"></label>
+    <label>Price – student<input name="price_student" value="<%= event.price_student ? (event.price_student / 100).toFixed(2).replace('.', ',') : '' %>" placeholder="0,00"></label>
+    <label>Price – child<input name="price_child" value="<%= event.price_child ? (event.price_child / 100).toFixed(2).replace('.', ',') : '' %>" placeholder="0,00"></label>
+    <label>Link name (slug)<input name="slug" value="<%= event.slug %>" placeholder="auto"></label>
+  </div>
+  <label>Description<textarea name="description" rows="4"><%= event.description %></textarea></label>
+  <label class="inline"><input type="checkbox" name="open" value="1" <%= event.open ? 'checked' : '' %>> Open for public registration</label>
+  <div><button class="btn">Save</button> <a href="/events">Cancel</a></div>
+</form>
+<%- include('../partials/footer') %>

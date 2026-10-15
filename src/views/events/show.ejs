@@ -1,0 +1,67 @@
+<%- include('../partials/header') %>
+<div class="pagehead">
+  <div>
+    <h1><%= event.name %></h1>
+    <div class="muted"><%= event.starts_at.replace('T', ' ') %> · <%= event.location %> · <%= event.type %></div>
+  </div>
+  <div class="actions">
+    <% if (event.open) { %><a class="btn btn-light" href="/e/<%= event.slug %>" target="_blank" rel="noopener">Public sign-up page</a><% } %>
+    <a class="btn btn-light" href="/events/<%= event.id %>?format=csv">CSV</a>
+    <% if (can('events.write')) { %><a class="btn" href="/events/<%= event.id %>/edit">Edit</a><% } %>
+  </div>
+</div>
+<div class="stats">
+  <div class="stat"><span><%= att.registrations %></span>registrations</div>
+  <div class="stat"><span><%= att.adults %></span>adults</div>
+  <div class="stat"><span><%= att.students %></span>students</div>
+  <div class="stat"><span><%= att.children %></span>children</div>
+  <div class="stat"><span><%= att.people %><%= event.capacity ? ' / ' + event.capacity : '' %></span>total people</div>
+  <div class="stat"><span><%= att.checked_in %></span>checked in</div>
+  <% if (showMoney) { %><div class="stat"><span><%= formatMoney(revenue) %></span>collected</div><% } %>
+</div>
+<table class="table">
+  <thead><tr><th>Name</th><th>Contact</th><th class="num">A</th><th class="num">S</th><th class="num">C</th><th>Status</th><% if (showMoney) { %><th class="num">Due / Paid</th><% } %><th></th></tr></thead>
+  <% for (const r of regs) { %>
+  <tr class="<%= r.status === 'cancelled' ? 'cancelled' : '' %>">
+    <td><%= r.name %><% if (r.family_id) { %> <a class="small" href="/families/<%= r.family_id %>">(contact)</a><% } %><div class="small muted"><%= r.notes %></div></td>
+    <td class="small"><%= r.email %><br><%= r.phone %></td>
+    <td class="num"><%= r.adults %></td><td class="num"><%= r.students %></td><td class="num"><%= r.children %></td>
+    <td><span class="badge badge-<%= r.status %>"><%= r.status %></span></td>
+    <% if (showMoney) { %><td class="num"><%= formatMoney(r.total) %> / <%= formatMoney(r.paid) %></td><% } %>
+    <td class="nowrap">
+      <% if (can('events.write') && r.status !== 'cancelled') { %>
+        <form method="post" action="/events/<%= event.id %>/registrations/<%= r.id %>/checkin" class="inline"><%- include('../partials/csrf') %><button class="btn btn-small <%= r.checked_in ? '' : 'btn-light' %>"><%= r.checked_in ? '✓ here' : 'check in' %></button></form>
+        <% if (r.status === 'pending') { %>
+        <form method="post" action="/events/<%= event.id %>/registrations/<%= r.id %>/pay" class="inline">
+          <%- include('../partials/csrf') %>
+          <select name="method" class="w-sm"><% for (const m of methods) { %><option><%= m %></option><% } %></select>
+          <button class="btn btn-small btn-light">mark paid</button>
+        </form>
+        <% } %>
+        <form method="post" action="/events/<%= event.id %>/registrations/<%= r.id %>/cancel" class="inline" data-confirm="Cancel this registration?"><%- include('../partials/csrf') %><button class="link small">cancel</button></form>
+      <% } %>
+    </td>
+  </tr>
+  <% } %>
+</table>
+<% if (can('events.write')) { %>
+<form method="post" action="/events/<%= event.id %>/registrations" class="card form">
+  <%- include('../partials/csrf') %>
+  <h2>Add registration</h2>
+  <div class="grid4">
+    <label>Existing contact
+      <input type="hidden" name="family_id" data-family-id>
+      <input data-family-search placeholder="search…" autocomplete="off" list="family-results"><datalist id="family-results"></datalist>
+    </label>
+    <label>Or name<input name="name"></label>
+    <label>Email<input type="email" name="email"></label>
+    <label>Phone<input name="phone"></label>
+    <label>Adults<input type="number" name="adults" value="1" min="0"></label>
+    <label>Students<input type="number" name="students" value="0" min="0"></label>
+    <label>Children<input type="number" name="children" value="0" min="0"></label>
+    <label>Notes<input name="notes" placeholder="dietary needs…"></label>
+  </div>
+  <button class="btn">Register</button>
+</form>
+<% } %>
+<%- include('../partials/footer') %>

@@ -1,0 +1,47 @@
+<%- include('partials/header') %>
+<div class="pagehead">
+  <h1>Shalom, <%= (user.name || user.email).split(/[ @]/)[0] %></h1>
+  <div class="hebdate"><span class="he" dir="rtl"><%= todayHebrew.he %></span> · <%= todayHebrew.en %></div>
+</div>
+
+<div class="stats">
+  <div class="stat"><span><%= stats.families %></span>families</div>
+  <div class="stat"><span><%= stats.people %></span>people</div>
+  <% if (stats.ytd !== undefined) { %>
+    <div class="stat"><span><%= formatMoney(stats.month) %></span>donations this month</div>
+    <div class="stat"><span><%= formatMoney(stats.ytd) %></span>donations this year</div>
+    <a class="stat" href="/finance/payments?unthanked=1"><span><%= stats.unthanked %></span>donations to thank</a>
+  <% } %>
+</div>
+
+<div class="cols">
+  <% if (typeof occasions !== 'undefined') { %>
+  <section class="card">
+    <h2>Next 14 days <a class="small" href="/occasions">all occasions &rarr;</a></h2>
+    <% if (!occasions.length) { %><p class="muted">Nothing coming up.</p><% } %>
+    <table class="table">
+      <% for (const o of occasions) { %>
+      <tr>
+        <td><span class="badge badge-<%= o.type %>"><%= OCCASION_LABELS[o.type] %></span></td>
+        <td><a href="/families/<%= o.family_id %>"><%= o.name %></a><div class="small muted"><%= o.family_name %></div></td>
+        <td><%= o.next.date %><div class="small muted"><%= o.next.hebrew.en %></div></td>
+        <td class="small"><%= o.daysAway === 0 ? 'today' : o.daysAway === 1 ? 'tomorrow' : `in ${o.daysAway} days` %></td>
+      </tr>
+      <% } %>
+    </table>
+  </section>
+  <% } %>
+  <% if (typeof events !== 'undefined') { %>
+  <section class="card">
+    <h2>Upcoming events <a class="small" href="/events">all events &rarr;</a></h2>
+    <% if (!events.length) { %><p class="muted">No upcoming events.</p><% } %>
+    <table class="table">
+      <% for (const e of events) { %>
+      <tr><td><a href="/events/<%= e.id %>"><%= e.name %></a><div class="small muted"><%= e.starts_at.replace('T', ' ') %></div></td>
+      <td class="num"><%= e.att.people %><%= e.capacity ? ` / ${e.capacity}` : '' %> people</td></tr>
+      <% } %>
+    </table>
+  </section>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

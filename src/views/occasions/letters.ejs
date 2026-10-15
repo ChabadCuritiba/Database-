@@ -1,0 +1,30 @@
+<%- include('../partials/header') %>
+<h1>Yahrzeit letters</h1>
+<form method="get" class="card filters-inline">
+  <label>Yahrzeits from <input type="date" name="from" value="<%= from %>"></label>
+  <label>for the next <input type="number" name="days" value="<%= days %>" class="w-sm"> days</label>
+  <button class="btn btn-small">Find</button>
+</form>
+<form method="post">
+  <%- include('../partials/csrf') %>
+  <input type="hidden" name="from" value="<%= from %>"><input type="hidden" name="days" value="<%= days %>">
+  <table class="table">
+    <thead><tr><th><input type="checkbox" data-select-all="ids" checked aria-label="Select all"></th><th>Yahrzeit</th><th>Of</th><th>Family</th><th>Address</th></tr></thead>
+    <% for (const l of letters) { %>
+    <tr>
+      <td><input type="checkbox" name="ids" value="<%= l.occasion.id %>" checked></td>
+      <td><%= l.occasion.next.date %><div class="small muted"><%= l.occasion.next.hebrew.en %></div></td>
+      <td><%= l.occasion.name %> <span class="he" dir="rtl"><%= l.occasion.hebrew_name %></span></td>
+      <td><a href="/families/<%= l.family.id %>"><%= l.family.family_name %></a></td>
+      <td class="small"><%= formatAddress(l.family).join(', ') || '— no address —' %></td>
+    </tr>
+    <% } %>
+    <% if (!letters.length) { %><tr><td colspan="5" class="muted">No Yahrzeits in this period.</td></tr><% } %>
+  </table>
+  <% if (letters.length) { %>
+  <button class="btn" name="format" value="pdf">Download PDF</button>
+  <button class="btn btn-light" name="format" value="docx">Download Word (.docx)</button>
+  <p class="small muted">The letter text can be edited under Admin › Settings.</p>
+  <% } %>
+</form>
+<%- include('../partials/footer') %>

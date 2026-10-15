@@ -1,0 +1,12 @@
+<%- include('../partials/header') %>
+<h1>Campaign #<%= campaign.id %> <span class="muted">· <%= campaign.channel %></span></h1>
+<div class="card">
+  <p><strong>Sent:</strong> <%= campaign.sent_count %> · <strong>Failed:</strong> <%= campaign.fail_count %> · <%= campaign.created_at %></p>
+  <% if (campaign.subject) { %><p><strong>Subject:</strong> <%= campaign.subject %></p><% } %>
+  <pre class="sample"><%= campaign.body %></pre>
+</div>
+<table class="table small">
+  <thead><tr><th>Family</th><th>Recipient</th><th>Status</th><th>Error</th></tr></thead>
+  <% for (const m of log) { %><tr><td><a href="/families/<%= m.family_id %>"><%= m.family_name %></a></td><td><%= m.recipient %></td><td><span class="badge badge-<%= m.status %>"><%= m.status %></span></td><td><%= m.error %></td></tr><% } %>
+</table>
+<%- include('../partials/footer') %>

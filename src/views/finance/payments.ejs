@@ -1,0 +1,42 @@
+<%- include('../partials/header') %>
+<h1>Payments</h1>
+<form method="get" class="card filters-inline">
+  <label>Search<input name="q" value="<%= q.q || '' %>" placeholder="family, receipt #"></label>
+  <label>From<input type="date" name="from" value="<%= q.from || '' %>"></label>
+  <label>To<input type="date" name="to" value="<%= q.to || '' %>"></label>
+  <label>Kind<select name="kind"><option value="">All</option><% for (const k of ['donation','order','registration']) { %><option <%= q.kind === k ? 'selected' : '' %>><%= k %></option><% } %></select></label>
+  <label>Fund<select name="fund_id"><option value="">All</option><% for (const f of funds) { %><option value="<%= f.id %>" <%= q.fund_id == f.id ? 'selected' : '' %>><%= f.name %></option><% } %></select></label>
+  <label>Method<select name="method"><option value="">All</option><% for (const m of methods) { %><option <%= q.method === m ? 'selected' : '' %>><%= m %></option><% } %></select></label>
+  <label class="inline"><input type="checkbox" name="unthanked" value="1" <%= q.unthanked === '1' ? 'checked' : '' %>> Not yet thanked</label>
+  <button class="btn btn-small">Filter</button>
+  <button class="btn btn-small btn-light" name="format" value="csv">CSV</button>
+</form>
+<form method="post">
+  <%- include('../partials/csrf') %>
+  <table class="table">
+    <thead><tr><th><input type="checkbox" data-select-all="ids" aria-label="Select all"></th><th>Date</th><th>Receipt</th><th>Family</th><th>Kind</th><th>Funds</th><th>Method</th><th class="num">Amount</th><th>Thanked</th></tr></thead>
+    <% for (const p of rows) { %>
+    <tr>
+      <td><% if (p.kind === 'donation') { %><input type="checkbox" name="ids" value="<%= p.id %>"><% } %></td>
+      <td><a href="/finance/donations/<%= p.id %>"><%= p.date %></a></td>
+      <td><%= p.receipt_number ? '#' + p.receipt_number : '' %></td>
+      <td><%= p.family_name || 'Anonymous' %></td>
+      <td class="small"><%= p.kind %></td>
+      <td class="small"><%= p.splits.map((s) => `${s.fund_name}${p.splits.length > 1 ? ' ' + formatMoney(s.amount) : ''}`).join(', ') %></td>
+      <td class="small"><%= p.method %></td>
+      <td class="num"><%= formatMoney(p.amount) %></td>
+      <td class="small"><%= p.kind === 'donation' ? (p.thanked_at ? p.thanked_at.slice(0, 10) : '—') : '' %></td>
+    </tr>
+    <% } %>
+    <tfoot><tr><td colspan="7"><%= rows.length %> payments</td><td class="num"><strong><%= formatMoney(total) %></strong></td><td></td></tr></tfoot>
+  </table>
+  <div class="bulkbar">
+    With selected donations:
+    <button class="btn btn-small" formaction="/finance/receipts">Print receipts (PDF)</button>
+    <button class="btn btn-small" formaction="/finance/thank-you" name="format" value="pdf">Thank-you letters (PDF)</button>
+    <button class="btn btn-small" formaction="/finance/thank-you" name="format" value="docx">Thank-you letters (Word)</button>
+    <button class="btn btn-small" formaction="/finance/thank-you" name="format" value="email" data-confirm-click="Email thank-you letters with receipts to the selected donors?">Email thank-you + receipt</button>
+    <label class="inline small"><input type="checkbox" name="mark_thanked" value="1" checked> mark as thanked</label>
+  </div>
+</form>
+<%- include('../partials/footer') %>

@@ -1,0 +1,36 @@
+<%- include('../partials/header') %>
+<h1><%= title %> <span class="muted">· <%= family.family_name %></span></h1>
+<form method="post" action="<%= occasion.id ? `/occasions/${occasion.id}` : '/occasions' %>" class="card form">
+  <%- include('../partials/csrf') %>
+  <input type="hidden" name="family_id" value="<%= family.id %>">
+  <div class="grid3">
+    <label>Type<select name="type"><% for (const t of types) { %><option value="<%= t %>" <%= occasion.type === t ? 'selected' : '' %>><%= OCCASION_LABELS[t] %></option><% } %></select></label>
+    <label>Name *<input name="name" value="<%= occasion.name %>" required placeholder="e.g. Avraham Cohen"></label>
+    <label>Hebrew name<input name="hebrew_name" value="<%= occasion.hebrew_name %>" dir="auto" placeholder="אברהם בן יצחק"></label>
+    <label>Relationship<input name="relationship" value="<%= occasion.relationship %>" placeholder="father of Moshe"></label>
+    <label>Linked person
+      <select name="person_id"><option value="">–</option><% for (const p of people) { %><option value="<%= p.id %>" <%= occasion.person_id === p.id ? 'selected' : '' %>><%= p.first_name %> <%= p.last_name %></option><% } %></select>
+    </label>
+    <label>Date of event (civil) *<input type="date" name="gregorian_date" value="<%= occasion.gregorian_date %>" required data-hebrew-preview="after_sunset"><small class="muted" data-hebrew-out></small></label>
+  </div>
+  <div class="checks">
+    <label class="inline"><input type="checkbox" name="after_sunset" value="1" <%= occasion.after_sunset ? 'checked' : '' %>> Occurred after sunset (Hebrew date advances)</label>
+    <label class="inline">Observe by
+      <select name="observe"><option value="hebrew" <%= occasion.observe === 'hebrew' ? 'selected' : '' %>>Hebrew date</option><option value="gregorian" <%= occasion.observe === 'gregorian' ? 'selected' : '' %>>Civil date</option></select>
+    </label>
+  </div>
+  <fieldset><legend>Automated reminders</legend>
+    <div class="checks">
+      <label class="inline"><input type="checkbox" name="remind" value="1" <%= occasion.remind ? 'checked' : '' %>> Send reminders</label>
+      <label class="inline"><input type="number" name="remind_days_before" value="<%= occasion.remind_days_before %>" min="0" max="60" class="w-sm"> days before</label>
+      <label class="inline"><input type="checkbox" name="remind_email" value="1" <%= occasion.remind_email ? 'checked' : '' %>> by email</label>
+      <label class="inline"><input type="checkbox" name="remind_sms" value="1" <%= occasion.remind_sms ? 'checked' : '' %>> by SMS</label>
+    </div>
+  </fieldset>
+  <label>Notes<textarea name="notes" rows="2"><%= occasion.notes %></textarea></label>
+  <button class="btn">Save</button> <a href="/families/<%= family.id %>">Cancel</a>
+</form>
+<% if (occasion.id) { %>
+<form method="post" action="/occasions/<%= occasion.id %>/delete" data-confirm="Delete this occasion?"><%- include('../partials/csrf') %><button class="btn btn-danger btn-small">Delete</button></form>
+<% } %>
+<%- include('../partials/footer') %>

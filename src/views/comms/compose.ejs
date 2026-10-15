@@ -1,0 +1,16 @@
+<%- include('../partials/header') %>
+<h1>New <%= { email: 'email campaign', sms: 'SMS campaign', call: 'robo-call' }[channel] %></h1>
+<form method="post" action="/comms/preview" class="card form">
+  <%- include('../partials/csrf') %>
+  <input type="hidden" name="channel" value="<%= channel %>">
+  <%- include('../partials/criteria', { criteria, categories, affiliations, sources, cities }) %>
+  <% if (channel === 'email') { %><label>Subject *<input name="subject" required></label><% } %>
+  <% if (channel === 'call') { %><label>Recorded audio URL (optional — otherwise the text is read aloud)<input name="audio_url" type="url" placeholder="https://…/message.mp3"></label><% } %>
+  <label><%= channel === 'call' ? 'Text to speak' : 'Message' %> *
+    <textarea name="body" rows="<%= channel === 'email' ? 12 : 4 %>" required <%= channel === 'sms' ? 'maxlength=600' : '' %>></textarea>
+  </label>
+  <p class="small muted">Merge fields: {{salutation}}, {{family_name}}, {{hebrew_name}}, {{city}}, {{address}}, {{org_name}}.
+    Contacts who opted out or have no <%= channel === 'email' ? 'email' : 'mobile number' %> are excluded automatically.</p>
+  <button class="btn">Preview recipients</button>
+</form>
+<%- include('../partials/footer') %>

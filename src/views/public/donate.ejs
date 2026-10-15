@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<div class="card narrow">
+  <h1>Support <%= settings.org_name %></h1>
+  <form method="post" class="form">
+    <%- include('../partials/csrf') %>
+    <div class="amounts">
+      <% for (const a of [36, 72, 180, 360, 1000]) { %>
+        <label class="amount"><input type="radio" name="amount" value="<%= a %>" <%= a === 180 ? 'checked' : '' %>> <%= formatMoney(a * 100) %></label>
+      <% } %>
+      <label class="amount"><input type="radio" name="amount" value="other"> Other</label>
+    </div>
+    <label>Other amount<input name="other_amount" inputmode="decimal" placeholder="0,00"></label>
+    <label>Fund<select name="fund_id"><% for (const f of funds) { %><option value="<%= f.id %>" <%= fundId === f.id ? 'selected' : '' %>><%= f.name %></option><% } %></select></label>
+    <div class="grid3">
+      <label>Full name *<input name="name" required autocomplete="name"></label>
+      <label>Email *<input type="email" name="email" required autocomplete="email"></label>
+    </div>
+    <label>Dedication (optional)<input name="dedication" placeholder="In honor of… / In memory of…"></label>
+    <button class="btn">Continue to secure payment</button>
+    <p class="small muted">Payments are processed securely by Stripe. Card details never reach our servers.</p>
+  </form>
+</div>
+<%- include('../partials/footer') %>

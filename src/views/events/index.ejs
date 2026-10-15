@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<div class="pagehead">
+  <h1><%= title %></h1>
+  <div class="actions">
+    <a class="btn btn-light" href="/events<%= past ? '' : '?past=1' %>"><%= past ? 'Upcoming' : 'Past' %> events</a>
+    <% if (can('events.write')) { %><a class="btn" href="/events/new">+ New event</a><% } %>
+  </div>
+</div>
+<table class="table">
+  <thead><tr><th>When</th><th>Event</th><th>Type</th><th class="num">Adults</th><th class="num">Students</th><th class="num">Children</th><th class="num">Total</th><th>Public link</th></tr></thead>
+  <% for (const e of events) { %>
+  <tr>
+    <td><%= e.starts_at.replace('T', ' ') %></td>
+    <td><a href="/events/<%= e.id %>"><%= e.name %></a><div class="small muted"><%= e.location %></div></td>
+    <td><span class="badge"><%= e.type %></span></td>
+    <td class="num"><%= e.att.adults %></td><td class="num"><%= e.att.students %></td><td class="num"><%= e.att.children %></td>
+    <td class="num"><strong><%= e.att.people %></strong><%= e.capacity ? ` / ${e.capacity}` : '' %></td>
+    <td class="small"><%= e.open ? `/e/${e.slug}` : 'closed' %></td>
+  </tr>
+  <% } %>
+  <% if (!events.length) { %><tr><td colspan="8" class="muted">No events.</td></tr><% } %>
+</table>
+<%- include('../partials/footer') %>

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title ? title + ' · ' : '' %><%= settings.org_name %></title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="/static/js/app.js" defer></script>
+</head>
+<body class="<%= typeof layout !== 'undefined' && layout === 'public' ? 'public' : '' %>">
+<% if (typeof layout !== 'undefined' && layout === 'public') { %>
+  <header class="public-header"><div class="wrap"><strong><%= settings.org_name %></strong></div></header>
+<% } else if (user) { %>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="/"><%= settings.org_name %></a>
+      <nav class="mainnav">
+        <% const nav = [
+          ['/families', 'Contacts', 'contacts.read'],
+          ['/occasions', 'Occasions', 'occasions.read'],
+          ['/finance', 'Finance', 'finance.read'],
+          ['/orders', 'Orders', 'orders.read'],
+          ['/events', 'Events', 'events.read'],
+          ['/comms', 'Communications', 'comms.send'],
+          ['/admin', 'Admin', 'admin'],
+        ]; %>
+        <% for (const [href, label, perm] of nav) { if (!can(perm)) continue; %>
+          <a href="<%= href %>" class="<%= path.startsWith(href) ? 'active' : '' %>"><%= label %></a>
+        <% } %>
+      </nav>
+      <form action="/search" method="get" class="quicksearch"><input type="search" name="q" placeholder="Search contacts…" aria-label="Search contacts"></form>
+      <div class="usermenu">
+        <span class="muted small"><%= user.name || user.email %> · <%= user.role %></span>
+        <form action="/logout" method="post" class="inline"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="link">Sign out</button></form>
+      </div>
+    </div>
+  </header>
+<% } %>
+<main class="wrap">
+<% for (const f of flash) { %><div class="flash flash-<%= f.type %>"><%= f.message %></div><% } %>

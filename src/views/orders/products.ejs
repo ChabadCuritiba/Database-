@@ -1,0 +1,33 @@
+<%- include('../partials/header') %>
+<h1>Products</h1>
+<table class="table">
+  <thead><tr><th>Name</th><th>Category</th><th>Season</th><th>Price</th><th>Active</th><th></th></tr></thead>
+  <% for (const p of products) { %>
+  <tr>
+    <% if (can('orders.write')) { %>
+      <td><input name="name" value="<%= p.name %>" form="p<%= p.id %>"></td>
+      <td><select name="category" form="p<%= p.id %>"><% for (const c of categories) { %><option <%= p.category === c ? 'selected' : '' %>><%= c %></option><% } %></select></td>
+      <td><input name="season" value="<%= p.season %>" form="p<%= p.id %>" class="w-md"></td>
+      <td><input name="price" value="<%= (p.price / 100).toFixed(2).replace('.', ',') %>" form="p<%= p.id %>" class="w-sm"></td>
+      <td><input type="checkbox" name="active" value="1" <%= p.active ? 'checked' : '' %> form="p<%= p.id %>"></td>
+      <td><form method="post" action="/orders/products/<%= p.id %>" id="p<%= p.id %>"><%- include('../partials/csrf') %><button class="btn btn-small">Save</button></form></td>
+    <% } else { %>
+      <td><%= p.name %></td><td><%= p.category %></td><td><%= p.season %></td><td><%= formatMoney(p.price) %></td><td><%= p.active ? 'yes' : 'no' %></td><td></td>
+    <% } %>
+  </tr>
+  <% } %>
+</table>
+<% if (can('orders.write')) { %>
+<form method="post" action="/orders/products" class="card form">
+  <%- include('../partials/csrf') %>
+  <h2>New product</h2>
+  <div class="grid4">
+    <label>Name<input name="name" required placeholder="Shmura Matzah (1 lb)"></label>
+    <label>Category<select name="category"><% for (const c of categories) { %><option><%= c %></option><% } %></select></label>
+    <label>Season<input name="season" placeholder="Pesach 5787"></label>
+    <label>Price<input name="price" inputmode="decimal" placeholder="0,00"></label>
+  </div>
+  <button class="btn">Add product</button>
+</form>
+<% } %>
+<%- include('../partials/footer') %>

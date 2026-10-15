@@ -1,0 +1,33 @@
+<%# Contact selection criteria shared by mailings and campaigns. Expects: criteria, categories, affiliations, sources, cities %>
+<fieldset class="criteria">
+  <legend>Who should receive it?</legend>
+  <div class="grid3">
+    <label>Search<input name="q" value="<%= criteria.q %>" placeholder="name, email…"></label>
+    <label>Priority (at most)
+      <select name="priorityMax"><option value="">Any</option><% for (let p = 1; p <= 5; p++) { %><option value="<%= p %>" <%= criteria.priorityMax == p ? 'selected' : '' %>><%= p %><%= p === 1 ? ' (highest)' : '' %></option><% } %></select>
+    </label>
+    <label>Affiliation
+      <select name="affiliation"><option value="">Any</option><% for (const a of affiliations) { %><option <%= criteria.affiliation === a ? 'selected' : '' %>><%= a %></option><% } %></select>
+    </label>
+    <label>Source
+      <select name="source"><option value="">Any</option><% for (const a of sources) { %><option <%= criteria.source === a ? 'selected' : '' %>><%= a %></option><% } %></select>
+    </label>
+    <label>City
+      <select name="city"><option value="">Any</option><% for (const a of cities) { %><option <%= criteria.city === a ? 'selected' : '' %>><%= a %></option><% } %></select>
+    </label>
+    <label>Donated since<input type="date" name="donatedSince" value="<%= criteria.donatedSince %>"></label>
+    <label>Has not donated since<input type="date" name="notDonatedSince" value="<%= criteria.notDonatedSince %>"></label>
+  </div>
+  <% if (categories.length) { %>
+  <div class="catpick">
+    <span>Categories (sub-categories included):</span>
+    <label class="inline"><input type="radio" name="categoryMode" value="any" <%= criteria.categoryMode !== 'all' ? 'checked' : '' %>> match any</label>
+    <label class="inline"><input type="radio" name="categoryMode" value="all" <%= criteria.categoryMode === 'all' ? 'checked' : '' %>> match all</label>
+    <div class="catlist">
+      <% for (const c of categories) { %>
+        <label class="inline depth-<%= c.depth %>"><input type="checkbox" name="categories" value="<%= c.id %>" <%= criteria.categories.includes(c.id) ? 'checked' : '' %>> <%= c.name %></label>
+      <% } %>
+    </div>
+  </div>
+  <% } %>
+</fieldset>

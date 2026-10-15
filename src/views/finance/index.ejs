@@ -1,0 +1,50 @@
+<%- include('../partials/header') %>
+<div class="pagehead">
+  <h1>Finance <%= year %></h1>
+  <div class="actions">
+    <% if (can('finance.write')) { %><a class="btn" href="/finance/donations/new">+ Record donation</a><% } %>
+    <a class="btn btn-light" href="/finance/payments">Payments</a>
+    <a class="btn btn-light" href="/finance/pledges">Pledges</a>
+    <a class="btn btn-light" href="/finance/year-end">Year-end statements</a>
+    <a class="btn btn-light" href="/finance/funds">Funds</a>
+  </div>
+</div>
+<div class="stats">
+  <% const kinds = { donation: 'Donations', order: 'Orders', registration: 'Event registrations' }; for (const k of byKind) { %>
+    <div class="stat"><span><%= formatMoney(k.total) %></span><%= kinds[k.kind] %></div>
+  <% } %>
+  <a class="stat" href="/finance/payments?unthanked=1"><span><%= unthanked %></span>donations not yet thanked</a>
+</div>
+<div class="cols">
+  <section class="card">
+    <h2>By fund</h2>
+    <table class="table">
+      <% const max = Math.max(1, ...byFund.map((f) => f.total)); for (const f of byFund) { %>
+      <tr><td><%= f.name %></td><td class="barcell"><span class="bar" style="width: <%= Math.round(f.total / max * 100) %>%"></span></td><td class="num"><%= formatMoney(f.total) %></td></tr>
+      <% } %>
+      <% if (!byFund.length) { %><tr><td class="muted">No donations this year.</td></tr><% } %>
+    </table>
+    <h2>By month</h2>
+    <div class="months">
+      <% const mmax = Math.max(1, ...byMonth.map((m) => m.total)); for (let m = 1; m <= 12; m++) { const row = byMonth.find((x) => Number(x.m) === m); const t = row ? row.total : 0; %>
+        <div class="month" title="<%= formatMoney(t) %>"><span style="height: <%= Math.round(t / mmax * 100) %>%"></span><small><%= m %></small></div>
+      <% } %>
+    </div>
+    <form method="get" class="filters-inline"><label>Year <input type="number" name="year" value="<%= year %>" class="w-sm"></label><button class="btn btn-small">Go</button></form>
+  </section>
+  <section class="card">
+    <h2>Recent payments</h2>
+    <table class="table">
+      <% for (const p of recent) { %>
+      <tr><td><a href="/finance/donations/<%= p.id %>"><%= p.date %></a></td><td><%= p.family_name || 'Anonymous' %></td><td class="small"><%= p.kind %></td><td class="num"><%= formatMoney(p.amount) %></td></tr>
+      <% } %>
+    </table>
+    <h2>Open pledges</h2>
+    <table class="table">
+      <% for (const p of pledges) { %>
+      <tr><td><a href="/families/<%= p.family_id %>"><%= p.family_name %></a></td><td class="small"><%= p.fund_name %></td><td class="num"><%= formatMoney(p.balance) %> due</td></tr>
+      <% } %>
+    </table>
+  </section>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,21 @@
+<%- include('../partials/header') %>
+<h1>Year-end contribution statements</h1>
+<form method="get" class="card filters-inline"><label>Year <input type="number" name="year" value="<%= year %>" class="w-sm"></label><button class="btn btn-small">Show</button></form>
+<form method="post">
+  <%- include('../partials/csrf') %>
+  <input type="hidden" name="year" value="<%= year %>">
+  <table class="table">
+    <thead><tr><th><input type="checkbox" data-select-all="family_ids" checked aria-label="Select all"></th><th>Family</th><th>Email</th><th class="num">Gifts</th><th class="num">Total (tax-deductible)</th></tr></thead>
+    <% for (const s of statements) { %>
+    <tr><td><input type="checkbox" name="family_ids" value="<%= s.family.id %>" checked></td>
+      <td><a href="/families/<%= s.family.id %>"><%= s.family.family_name %></a></td><td class="small"><%= s.family.email %></td>
+      <td class="num"><%= s.payments.length %></td><td class="num"><%= formatMoney(s.payments.reduce((t, p) => t + p.amount, 0)) %></td></tr>
+    <% } %>
+    <% if (!statements.length) { %><tr><td colspan="5" class="muted">No donations in <%= year %>.</td></tr><% } %>
+  </table>
+  <% if (statements.length) { %>
+  <button class="btn" name="format" value="pdf">Download statements (PDF)</button>
+  <button class="btn btn-light" name="format" value="email" data-confirm-click="Email statements to the selected donors?">Email statements</button>
+  <% } %>
+</form>
+<%- include('../partials/footer') %>

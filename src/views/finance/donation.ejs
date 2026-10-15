@@ -1,0 +1,26 @@
+<%- include('../partials/header') %>
+<div class="pagehead">
+  <h1><%= payment.kind === 'donation' ? 'Donation' : 'Payment' %> <%= payment.receipt_number ? '#' + payment.receipt_number : '' %></h1>
+  <div class="actions">
+    <% if (payment.kind === 'donation') { %><a class="btn" href="/finance/donations/<%= payment.id %>/receipt.pdf">Receipt PDF</a><% } %>
+  </div>
+</div>
+<div class="card">
+  <dl class="dl">
+    <dt>Donor</dt><dd><%- family ? `<a href="/families/${family.id}">` : '' %><%= family ? family.family_name : 'Anonymous' %><%- family ? '</a>' : '' %></dd>
+    <dt>Date</dt><dd><%= payment.date %></dd>
+    <dt>Amount</dt><dd><strong><%= formatMoney(payment.amount) %></strong></dd>
+    <dt>Method</dt><dd><%= payment.method %> <%= payment.reference || '' %></dd>
+    <% if (payment.kind !== 'donation') { %><dt>For</dt><dd><a href="<%= payment.kind === 'order' ? '/orders/' + payment.ref_id : '/events' %>"><%= payment.kind %> #<%= payment.ref_id %></a></dd><% } %>
+    <% for (const s of splits) { %><dt>Fund</dt><dd><%= s.fund_name %>: <%= formatMoney(s.amount) %></dd><% } %>
+    <% if (payment.pledge_id) { %><dt>Pledge</dt><dd>#<%= payment.pledge_id %></dd><% } %>
+    <dt>Thanked</dt><dd><%= payment.thanked_at || 'not yet' %></dd>
+    <% if (payment.notes) { %><dt>Notes</dt><dd class="notes"><%= payment.notes %></dd><% } %>
+  </dl>
+</div>
+<% if (can('admin')) { %>
+<form method="post" action="/finance/donations/<%= payment.id %>/delete" data-confirm="Delete this payment? The receipt number will not be reused.">
+  <%- include('../partials/csrf') %><button class="btn btn-danger btn-small">Delete payment</button>
+</form>
+<% } %>
+<%- include('../partials/footer') %>

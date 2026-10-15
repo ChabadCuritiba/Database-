@@ -1,0 +1,28 @@
+<%- include('../partials/header') %>
+<h1>Hebrew date converter</h1>
+<div class="cols">
+  <form method="get" class="card form">
+    <h2>Gregorian → Hebrew</h2>
+    <label>Date<input type="date" name="gdate" value="<%= q.gdate || '' %>" required></label>
+    <label class="inline"><input type="checkbox" name="after_sunset" value="1" <%= q.after_sunset ? 'checked' : '' %>> After sunset</label>
+    <button class="btn">Convert</button>
+  </form>
+  <form method="get" class="card form">
+    <h2>Hebrew → Gregorian</h2>
+    <div class="grid3">
+      <label>Day<input type="number" name="hday" min="1" max="30" value="<%= q.hday || '' %>" required></label>
+      <label>Month<select name="hmonth"><% for (const m of months) { %><option <%= q.hmonth === m ? 'selected' : '' %>><%= m %></option><% } %></select></label>
+      <label>Year<input type="number" name="hyear" min="3762" max="6000" value="<%= q.hyear || '' %>" placeholder="5787" required></label>
+    </div>
+    <button class="btn">Convert</button>
+  </form>
+</div>
+<% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+<% if (result) { %>
+<div class="card result">
+  <div class="big"><%= result.gregorian %></div>
+  <div class="big he" dir="rtl"><%= result.hebrew.he %></div>
+  <div><%= result.hebrew.en %></div>
+</div>
+<% } %>
+<%- include('../partials/footer') %>

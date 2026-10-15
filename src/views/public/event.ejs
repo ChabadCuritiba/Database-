@@ -1,0 +1,35 @@
+<%- include('../partials/header') %>
+<div class="card narrow">
+  <h1><%= event.name %></h1>
+  <p class="muted"><%= new Date(event.starts_at).toLocaleString('pt-BR', { dateStyle: 'full', timeStyle: 'short' }) %><%= event.location ? ' · ' + event.location : '' %></p>
+  <% if (event.description) { %><p class="notes"><%= event.description %></p><% } %>
+  <% const prices = [['adults', 'Adults', event.price_adult], ['students', 'Students', event.price_student], ['children', 'Children', event.price_child]]; %>
+  <% if (left === 0) { %>
+    <div class="flash flash-warning">Sorry, this event is full.</div>
+  <% } else { %>
+  <form method="post" class="form" data-price-form>
+    <%- include('../partials/csrf') %>
+    <label>Full name *<input name="name" required autocomplete="name"></label>
+    <div class="grid3">
+      <label>Email *<input type="email" name="email" required autocomplete="email"></label>
+      <label>Phone<input name="phone" autocomplete="tel"></label>
+    </div>
+    <div class="grid3">
+      <% for (const [key, label, price] of prices) { %>
+      <label><%= label %> <span class="small muted"><%= price ? formatMoney(price) : 'free' %></span>
+        <input type="number" name="<%= key %>" min="0" max="50" value="<%= key === 'adults' ? 1 : 0 %>" data-price="<%= price %>"></label>
+      <% } %>
+    </div>
+    <label>Notes<input name="notes" placeholder="dietary needs, questions…"></label>
+    <% if (left !== null) { %><p class="small muted"><%= left %> spots left</p><% } %>
+    <p>Total: <strong data-price-total><%= formatMoney(event.price_adult) %></strong></p>
+    <% if (online && (event.price_adult || event.price_student || event.price_child)) { %>
+      <button class="btn">Register &amp; pay online</button>
+      <button class="btn btn-light" name="pay_later" value="1">Register, pay at the door</button>
+    <% } else { %>
+      <button class="btn">Register</button>
+    <% } %>
+  </form>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

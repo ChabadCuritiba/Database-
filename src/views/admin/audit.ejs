@@ -1,0 +1,8 @@
+<%- include('../partials/header') %>
+<h1>Audit log</h1>
+<%- include('_nav') %>
+<table class="table small">
+  <thead><tr><th>When</th><th>User</th><th>Action</th><th>Record</th><th>Details</th></tr></thead>
+  <% for (const r of rows) { %><tr><td class="nowrap"><%= r.created_at %></td><td><%= r.email %></td><td><%= r.action %></td><td><%= r.entity %><%= r.entity_id ? ' #' + r.entity_id : '' %></td><td class="mono"><%= r.details %></td></tr><% } %>
+</table>
+<%- include('../partials/footer') %>

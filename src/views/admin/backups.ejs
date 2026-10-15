@@ -1,0 +1,14 @@
+<%- include('../partials/header') %>
+<h1>Backups</h1>
+<%- include('_nav') %>
+<div class="card">
+  <p>Automatic backups run on schedule <code><%= cfg.cron %></code> and the latest <%= cfg.keep %> are kept in <code><%= cfg.dir %></code>.
+    <%= cfg.gcsBucket ? `Each backup is also copied to gs://${cfg.gcsBucket}.` : 'Set GCS_BUCKET to also copy backups to Google Cloud Storage.' %></p>
+  <form method="post"><%- include('../partials/csrf') %><button class="btn">Back up now</button></form>
+</div>
+<table class="table">
+  <thead><tr><th>File</th><th class="num">Size</th><th></th></tr></thead>
+  <% for (const b of backups) { %><tr><td><%= b.name %></td><td class="num"><%= (b.size / 1024).toFixed(0) %> KB</td><td><a href="/admin/backups/<%= b.name %>">download</a></td></tr><% } %>
+  <% if (!backups.length) { %><tr><td colspan="3" class="muted">No backups yet.</td></tr><% } %>
+</table>
+<%- include('../partials/footer') %>

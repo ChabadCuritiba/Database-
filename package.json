@@ -1,0 +1,49 @@
+{
+  "name": "community-platform",
+  "version": "1.0.0",
+  "description": "Contact, Hebrew calendar, donations, events and communications platform for Jewish communities",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test test/*.test.js",
+    "seed": "node scripts/seed.js",
+    "backup": "node scripts/backup.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChabadCuritiba/Database-.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/ChabadCuritiba/Database-/issues"
+  },
+  "homepage": "https://github.com/ChabadCuritiba/Database-#readme",
+  "dependencies": {
+    "@fontsource/noto-sans-hebrew": "^5.3.0",
+    "@hebcal/core": "^6.14.4",
+    "better-sqlite3": "^13.0.3",
+    "docx": "^9.11.0",
+    "ejs": "^7.0.1",
+    "express": "^5.3.0",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.1.1",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "pdfkit": "^0.20.2",
+    "stripe": "^23.0.0",
+    "twilio": "^6.2.0"
+  },
+  "type": "module",
+  "devDependencies": {
+    "supertest": "^7.3.1"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}

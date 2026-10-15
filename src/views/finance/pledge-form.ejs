@@ -1,0 +1,15 @@
+<%- include('../partials/header') %>
+<h1>New pledge <span class="muted">· <%= family.family_name %></span></h1>
+<form method="post" action="/finance/pledges" class="card form">
+  <%- include('../partials/csrf') %>
+  <input type="hidden" name="family_id" value="<%= family.id %>">
+  <div class="grid3">
+    <label>Fund<select name="fund_id"><% for (const f of funds) { %><option value="<%= f.id %>"><%= f.name %></option><% } %></select></label>
+    <label>Amount<input name="amount" required inputmode="decimal" placeholder="0,00"></label>
+    <label>Date<input type="date" name="date" value="<%= today %>"></label>
+    <label>Due date<input type="date" name="due_date"></label>
+  </div>
+  <label>Notes<textarea name="notes" rows="2"></textarea></label>
+  <button class="btn">Save pledge</button> <a href="/families/<%= family.id %>">Cancel</a>
+</form>
+<%- include('../partials/footer') %>

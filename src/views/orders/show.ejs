@@ -1,0 +1,45 @@
+<%- include('../partials/header') %>
+<div class="pagehead">
+  <h1>Order #<%= order.id %> <span class="muted">· <a href="/families/<%= family.id %>"><%= family.family_name %></a></span></h1>
+  <% if (can('orders.write')) { %>
+  <form method="post" action="/orders/<%= order.id %>/status" class="inline-form">
+    <%- include('../partials/csrf') %>
+    <select name="status"><% for (const s of statuses) { %><option <%= order.status === s ? 'selected' : '' %>><%= s %></option><% } %></select>
+    <button class="btn btn-small">Update status</button>
+  </form>
+  <% } %>
+</div>
+<div class="cols">
+  <section class="card">
+    <table class="table">
+      <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th></tr></thead>
+      <% for (const i of items) { %><tr><td><%= i.name %> <span class="small muted"><%= i.season %></span></td><td class="num"><%= i.quantity %></td><td class="num"><%= formatMoney(i.unit_price) %></td><td class="num"><%= formatMoney(i.quantity * i.unit_price) %></td></tr><% } %>
+      <tfoot>
+        <tr><td colspan="3">Total</td><td class="num"><strong><%= formatMoney(total) %></strong></td></tr>
+        <tr><td colspan="3">Paid</td><td class="num"><%= formatMoney(paid) %></td></tr>
+        <tr><td colspan="3">Balance</td><td class="num <%= total - paid > 0 ? 'warn' : 'ok' %>"><strong><%= formatMoney(total - paid) %></strong></td></tr>
+      </tfoot>
+    </table>
+    <% if (order.notes) { %><p class="notes"><%= order.notes %></p><% } %>
+  </section>
+  <section class="card">
+    <h2>Payments</h2>
+    <table class="table"><% for (const p of payments) { %><tr><td><%= p.date %></td><td><%= p.method %> <%= p.reference || '' %></td><td class="num"><%= formatMoney(p.amount) %></td></tr><% } %></table>
+    <% if (can('orders.write') && total - paid > 0) { %>
+    <form method="post" action="/orders/<%= order.id %>/payments" class="form">
+      <%- include('../partials/csrf') %>
+      <div class="grid3">
+        <label>Amount<input name="amount" value="<%= ((total - paid) / 100).toFixed(2).replace('.', ',') %>"></label>
+        <label>Method<select name="method"><% for (const m of methods) { %><option><%= m %></option><% } %></select></label>
+        <label>Date<input type="date" name="date" value="<%= today %>"></label>
+      </div>
+      <label>Reference<input name="reference"></label>
+      <button class="btn btn-small">Record payment</button>
+    </form>
+    <% if (online) { %>
+    <form method="post" action="/orders/<%= order.id %>/pay-link"><%- include('../partials/csrf') %><button class="btn btn-small btn-light">Email online payment link</button></form>
+    <% } %>
+    <% } %>
+  </section>
+</div>
+<%- include('../partials/footer') %>

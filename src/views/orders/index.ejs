@@ -1,0 +1,33 @@
+<%- include('../partials/header') %>
+<div class="pagehead">
+  <h1>Holiday &amp; Judaica orders</h1>
+  <div class="actions"><a class="btn btn-light" href="/orders/products">Products &amp; prices</a></div>
+</div>
+<form method="get" class="card filters-inline">
+  <label>Season<select name="season"><option value="">All</option><% for (const s of seasons) { %><option <%= q.season === s ? 'selected' : '' %>><%= s %></option><% } %></select></label>
+  <label>Status<select name="status"><option value="">All</option><% for (const s of statuses) { %><option <%= q.status === s ? 'selected' : '' %>><%= s %></option><% } %></select></label>
+  <button class="btn btn-small">Filter</button>
+  <button class="btn btn-small btn-light" name="format" value="csv">CSV</button>
+</form>
+<p class="muted small">To create an order, open a contact and click “+ Order”.</p>
+<div class="cols">
+  <section class="card">
+    <h2>Orders</h2>
+    <table class="table">
+      <thead><tr><th>#</th><th>Date</th><th>Family</th><th>Status</th><th class="num">Total</th><th class="num">Paid</th></tr></thead>
+      <% for (const o of orders) { %>
+      <tr><td><a href="/orders/<%= o.id %>"><%= o.id %></a></td><td><%= o.date %></td><td><a href="/families/<%= o.family_id %>"><%= o.family_name %></a></td>
+        <td><span class="badge"><%= o.status %></span></td><td class="num"><%= formatMoney(o.total) %></td>
+        <td class="num <%= o.paid >= o.total ? 'ok' : 'warn' %>"><%= formatMoney(o.paid) %></td></tr>
+      <% } %>
+      <% if (!orders.length) { %><tr><td colspan="6" class="muted">No orders.</td></tr><% } %>
+    </table>
+  </section>
+  <section class="card">
+    <h2>Quantities to procure</h2>
+    <table class="table">
+      <% for (const s of summary) { %><tr><td><%= s.name %> <span class="small muted"><%= s.season %></span></td><td class="num"><strong><%= s.qty %></strong></td><td class="num"><%= formatMoney(s.total) %></td></tr><% } %>
+    </table>
+  </section>
+</div>
+<%- include('../partials/footer') %>

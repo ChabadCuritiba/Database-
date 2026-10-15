@@ -1,0 +1,58 @@
+<%- include('../partials/header') %>
+<div class="pagehead">
+  <h1>Contacts <span class="muted">(<%= total %>)</span></h1>
+  <div class="actions">
+    <% if (can('contacts.write')) { %>
+      <a class="btn" href="/families/new">+ New contact</a>
+      <a class="btn btn-light" href="/families/export.csv?<%= qs %>">Export CSV</a>
+    <% } %>
+    <a class="btn btn-light" href="/categories">Categories</a>
+  </div>
+</div>
+
+<details class="card filters" <%= qs ? 'open' : '' %>>
+  <summary>Filter</summary>
+  <form method="get">
+    <%- include('../partials/criteria', { criteria, categories, affiliations, sources, cities }) %>
+    <button class="btn">Apply</button> <a href="/families">Clear</a>
+  </form>
+</details>
+
+<form method="post" action="/families/bulk-categorize">
+  <%- include('../partials/csrf') %>
+  <table class="table">
+    <thead><tr>
+      <% if (can('contacts.write')) { %><th><input type="checkbox" data-select-all="family_ids" aria-label="Select all"></th><% } %>
+      <th>Family</th><th>Contact</th><th>City</th><th>Affiliation</th><th>Priority</th>
+    </tr></thead>
+    <tbody>
+    <% for (const f of rows) { %>
+      <tr>
+        <% if (can('contacts.write')) { %><td><input type="checkbox" name="family_ids" value="<%= f.id %>"></td><% } %>
+        <td><a href="/families/<%= f.id %>"><strong><%= f.family_name %></strong></a><div class="small muted"><%= f.salutation %></div></td>
+        <td class="small"><%= f.email %><br><%= f.mobile || f.phone %></td>
+        <td><%= f.city %><%= f.state ? '/' + f.state : '' %></td>
+        <td><%= f.affiliation %></td>
+        <td><span class="prio prio-<%= f.priority %>"><%= f.priority %></span></td>
+      </tr>
+    <% } %>
+    <% if (!rows.length) { %><tr><td colspan="6" class="muted">No contacts found.</td></tr><% } %>
+    </tbody>
+  </table>
+  <% if (can('contacts.write') && categories.length) { %>
+  <div class="bulkbar">
+    Tag selected with
+    <select name="category_id"><% for (const c of categories) { %><option value="<%= c.id %>"><%= c.path %></option><% } %></select>
+    <button class="btn btn-small">Apply tag</button>
+  </div>
+  <% } %>
+</form>
+
+<% if (pages > 1) { %>
+<nav class="pager">
+  <% for (let p = 1; p <= pages; p++) { %>
+    <a href="?<%= qs %>&page=<%= p %>" class="<%= p === page ? 'active' : '' %>"><%= p %></a>
+  <% } %>
+</nav>
+<% } %>
+<%- include('../partials/footer') %>

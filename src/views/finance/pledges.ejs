@@ -1,0 +1,17 @@
+<%- include('../partials/header') %>
+<h1>Open pledges</h1>
+<table class="table">
+  <thead><tr><th>Family</th><th>Fund</th><th>Pledged</th><th>Due</th><th class="num">Amount</th><th class="num">Paid</th><th class="num">Balance</th><th></th></tr></thead>
+  <% for (const p of pledges) { %>
+  <tr class="<%= p.due_date && p.due_date < new Date().toISOString().slice(0, 10) ? 'overdue' : '' %>">
+    <td><a href="/families/<%= p.family_id %>"><%= p.family_name %></a></td><td><%= p.fund_name %></td><td><%= p.date %></td><td><%= p.due_date || '' %></td>
+    <td class="num"><%= formatMoney(p.amount) %></td><td class="num"><%= formatMoney(p.paid) %></td><td class="num"><strong><%= formatMoney(p.balance) %></strong></td>
+    <td><% if (can('finance.write')) { %>
+      <a href="/finance/donations/new?family_id=<%= p.family_id %>&pledge_id=<%= p.id %>">record payment</a>
+      <form method="post" action="/finance/pledges/<%= p.id %>/cancel" class="inline" data-confirm="Cancel this pledge?"><%- include('../partials/csrf') %><button class="link">cancel</button></form>
+    <% } %></td>
+  </tr>
+  <% } %>
+  <tfoot><tr><td colspan="6">Total outstanding</td><td class="num"><strong><%= formatMoney(pledges.reduce((t, p) => t + p.balance, 0)) %></strong></td><td></td></tr></tfoot>
+</table>
+<%- include('../partials/footer') %>
