@@ -11,6 +11,9 @@ const HEBREW_RE = /[֐-׿]/;
 
 const MM = 72 / 25.4;
 
+// Receipts and letters are printed in Portuguese.
+const METHOD_PT = { cash: 'Dinheiro', check: 'Cheque', pix: 'PIX', card: 'Cartão', transfer: 'Transferência bancária', online: 'Online', other: 'Outro' };
+
 /** Label sheet layouts (dimensions in mm). */
 export const LABEL_LAYOUTS = {
   'letter-3x10': { name: 'Letter 3×10 (Avery 5160 / Pimaco 6180)', size: 'LETTER', cols: 3, rows: 10, w: 66.7, h: 25.4, top: 12.7, left: 4.8, gapX: 3.2, gapY: 0 },
@@ -57,7 +60,7 @@ function letterhead(doc, s) {
   doc.font('Helvetica').fontSize(9).fillColor('#444');
   const sub = [s.org_address, s.org_phone, s.org_email].filter(Boolean).join('  ·  ');
   if (sub) doc.text(sub, { align: 'center' });
-  if (s.org_tax_id) doc.text(`CNPJ/Tax ID: ${s.org_tax_id}`, { align: 'center' });
+  if (s.org_tax_id) doc.text(`CNPJ: ${s.org_tax_id}`, { align: 'center' });
   doc.fillColor('black').moveDown(0.5);
   doc.moveTo(doc.page.margins.left, doc.y).lineTo(doc.page.width - doc.page.margins.right, doc.y).strokeColor('#999').stroke();
   doc.moveDown(1.5).fontSize(11);
@@ -77,20 +80,20 @@ function signature(doc, s) {
 
 function drawReceipt(doc, s, { family, payment, splits }) {
   letterhead(doc, s);
-  doc.font('Helvetica-Bold').fontSize(14).text(`Donation Receipt #${payment.receipt_number ?? payment.id}`);
+  doc.font('Helvetica-Bold').fontSize(14).text(`Recibo de Doação nº ${payment.receipt_number ?? payment.id}`);
   doc.font('Helvetica').fontSize(11).moveDown(0.5);
-  doc.text(`Date: ${formatGregorian(payment.date, config.locale)}`);
+  doc.text(`Data: ${formatGregorian(payment.date, config.locale)}`);
   doc.moveDown();
   if (family) {
     addressBlock(doc, family);
     if (family.tax_id) doc.text(`CPF/CNPJ: ${family.tax_id}`).moveDown();
   } else {
-    doc.text('Anonymous donor').moveDown();
+    doc.text('Doador anônimo').moveDown();
   }
-  doc.font('Helvetica-Bold').text(`Amount received: ${formatMoney(payment.amount)}`);
-  doc.font('Helvetica').text(`Payment method: ${payment.method}${payment.reference ? ` (${payment.reference})` : ''}`);
+  doc.font('Helvetica-Bold').text(`Valor recebido: ${formatMoney(payment.amount)}`);
+  doc.font('Helvetica').text(`Forma de pagamento: ${METHOD_PT[payment.method] || payment.method}${payment.reference ? ` (${payment.reference})` : ''}`);
   if (splits?.length) {
-    doc.moveDown(0.5).text('Designation:');
+    doc.moveDown(0.5).text('Destinação:');
     for (const sp of splits) doc.text(`   • ${sp.fund_name}: ${formatMoney(sp.amount)}`);
   }
   doc.moveDown(2).fontSize(9).fillColor('#444').text(s.receipt_footer || '').fillColor('black').fontSize(11);
@@ -111,7 +114,7 @@ export async function yearEndStatementsPdf(settings, statements, year) {
   statements.forEach(({ family, payments }, i) => {
     if (i) doc.addPage();
     letterhead(doc, settings);
-    doc.font('Helvetica-Bold').fontSize(14).text(`Annual Contribution Statement ${year}`);
+    doc.font('Helvetica-Bold').fontSize(14).text(`Declaração Anual de Doações ${year}`);
     doc.moveDown();
     addressBlock(doc, family);
     if (family.tax_id) doc.text(`CPF/CNPJ: ${family.tax_id}`).moveDown();
@@ -123,11 +126,11 @@ export async function yearEndStatementsPdf(settings, statements, year) {
       cells.forEach((c, j) => doc.text(c, cols[j], y, { width: j === 3 ? 120 : cols[j + 1] - cols[j] - 6, align: j === 3 ? 'right' : 'left' }));
       doc.moveDown(0.3);
     };
-    row(['Receipt', 'Date', 'Fund', 'Amount'], true);
+    row(['Recibo', 'Data', 'Fundo', 'Valor'], true);
     let total = 0;
     for (const p of payments) {
       total += p.amount;
-      row([String(p.receipt_number ?? ''), p.date, p.funds || '', formatMoney(p.amount)]);
+      row([String(p.receipt_number ?? ''), p.date.split('-').reverse().join('/'), p.funds || '', formatMoney(p.amount)]);
       if (doc.y > doc.page.height - 120) doc.addPage();
     }
     doc.moveDown(0.5);

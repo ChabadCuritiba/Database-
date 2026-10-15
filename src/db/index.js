@@ -5,7 +5,9 @@ import { config } from '../config.js';
 
 const schema = fs.readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
 
-const DEFAULT_FUNDS = ['General', 'Building Fund', 'Holiday Appeals', 'Kiddush', 'Education'];
+const DEFAULT_FUNDS = ['Geral', 'Fundo de Construção', 'Campanhas de Festas', 'Kidush', 'Educação'];
+// Earlier English fund names, renamed once if still unchanged.
+const OLD_FUND_NAMES = { General: 'Geral', 'Building Fund': 'Fundo de Construção', 'Holiday Appeals': 'Campanhas de Festas', Kiddush: 'Kidush', Education: 'Educação' };
 const DEFAULT_SETTINGS = {
   org_name: 'Beit Chabad',
   org_address: '',
@@ -13,10 +15,10 @@ const DEFAULT_SETTINGS = {
   org_phone: '',
   org_email: '',
   signature_name: '',
-  signature_title: 'Rabbi',
-  receipt_footer: 'Thank you for your generous support. No goods or services were provided in exchange for this contribution.',
+  signature_title: 'Rabino',
+  receipt_footer: 'Agradecemos a sua generosa contribuição. Nenhum bem ou serviço foi fornecido em troca desta doação.',
   thank_you_body:
-    'Dear {{salutation}},\n\nThank you for your generous gift of {{amount}} on {{date}} to {{fund}}. Your support makes our work possible.\n\nWith blessings,',
+    'Prezado(a) {{salutation}},\n\nAgradecemos de coração a sua generosa doação de {{amount}}, recebida em {{date}}, destinada a {{fund}}. O seu apoio torna o nosso trabalho possível.\n\nCom bênçãos,',
   yahrzeit_body:
     'Dear {{salutation}},\n\nWe wish to remind you that the Yahrzeit of {{name}} ({{hebrew_name}}) will be observed on {{hebrew_date}}, which corresponds to {{gregorian_date}}. The Yahrzeit candle should be lit on the evening before, {{eve_date}}, before sunset.\n\nIt is customary to recite Kaddish, give charity and study Torah in memory of the departed. Please let us know if you would like us to arrange a minyan.\n\nMay the soul of the departed be bound in the bond of life.',
   reminder_email_subject: 'Upcoming {{type}}: {{name}} - {{hebrew_date}}',
@@ -36,7 +38,19 @@ export function openDb(file = config.dbPath) {
   return db;
 }
 
+// Earlier English defaults, replaced by the Portuguese ones unless an admin edited them.
+const OLD_DEFAULTS = {
+  signature_title: 'Rabbi',
+  receipt_footer: 'Thank you for your generous support. No goods or services were provided in exchange for this contribution.',
+  thank_you_body:
+    'Dear {{salutation}},\n\nThank you for your generous gift of {{amount}} on {{date}} to {{fund}}. Your support makes our work possible.\n\nWith blessings,',
+};
+
 function seedDefaults(db) {
+  const upgrade = db.prepare('UPDATE settings SET value = ? WHERE key = ? AND value = ?');
+  for (const [k, old] of Object.entries(OLD_DEFAULTS)) upgrade.run(DEFAULT_SETTINGS[k], k, old);
+  const rename = db.prepare('UPDATE funds SET name = ? WHERE name = ? AND NOT EXISTS (SELECT 1 FROM funds WHERE name = ?)');
+  for (const [en, pt] of Object.entries(OLD_FUND_NAMES)) rename.run(pt, en, pt);
   const insertSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) insertSetting.run(k, v);
   if (!db.prepare('SELECT 1 FROM funds LIMIT 1').get()) {

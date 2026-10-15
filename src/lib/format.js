@@ -58,5 +58,5 @@ export function formatCep(cep) {
 }
 
 export function salutationOf(f) {
-  return f.salutation || `${f.family_name} Family`;
+  return f.salutation || `Família ${f.family_name}`;
 }

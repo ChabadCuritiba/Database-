@@ -149,7 +149,7 @@ test('donations: split across funds, receipt numbers, pledges, receipts and than
   outbox.length = 0;
   res = await agent.postForm('/finance/thank-you', { all_unthanked: '1', format: 'email' });
   assert.equal(outbox.length, 1);
-  assert.equal(outbox[0].attachments[0].filename, 'receipt.pdf');
+  assert.equal(outbox[0].attachments[0].filename, 'recibo.pdf');
 
   res = await agent.postForm('/finance/year-end', { year: '2025', format: 'pdf' });
   assert.equal(res.headers['content-type'], 'application/pdf');
@@ -395,4 +395,54 @@ test('admins can delete users, but not themselves or the last admin', async () =
   await agent.postForm(`/admin/users/${vid}/delete`);
   res = await victim.get('/families');
   assert.equal(res.headers.location, '/login');
+});
+
+test('receipts, thank-you letters and statements are in Portuguese', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { writeFileSync, mkdtempSync } = await import('node:fs');
+  const { db } = setup();
+  const { getSettings } = await import('../src/db/index.js');
+  const { receiptsPdf, yearEndStatementsPdf, lettersPdf } = await import('../src/lib/pdf.js');
+  const { receiptData, yearEndStatements, thankYouLetters } = await import('../src/lib/finance.js');
+  const fid = createFamily(db, { salutation: null });
+  const pid = recordDonation(db, { familyId: fid, date: '2025-03-10', method: 'transfer', splits: [{ fundId: 1, amount: 18000 }] });
+  const s = getSettings(db);
+  assert.match(s.thank_you_body, /Agradecemos/);
+  const letters = thankYouLetters(db, s, [pid]);
+  assert.match(letters[0].body, /Prezado\(a\) Família Cohen/);
+
+  let pdftotext = true;
+  try { execFileSync('pdftotext', ['-v'], { stdio: 'ignore' }); } catch { pdftotext = false; }
+  if (!pdftotext) return; // text extraction tool not installed; the template checks above still ran
+  const dir = mkdtempSync('/tmp/cp-pdf-');
+  const text = async (name, buf) => { writeFileSync(`${dir}/${name}`, buf); return execFileSync('pdftotext', [`${dir}/${name}`, '-']).toString(); };
+  const receipt = await text('r.pdf', await receiptsPdf(s, receiptData(db, [pid])));
+  assert.match(receipt, /Recibo de Doação nº 1/);
+  assert.match(receipt, /Valor recebido/);
+  assert.match(receipt, /Transferência bancária/);
+  assert.match(receipt, /Nenhum bem ou serviço/);
+  const stmt = await text('s.pdf', await yearEndStatementsPdf(s, yearEndStatements(db, 2025), 2025));
+  assert.match(stmt, /Declaração Anual de Doações 2025/);
+  assert.match(stmt, /10\/03\/2025/);
+  const letter = await text('l.pdf', await lettersPdf(s, letters));
+  assert.match(letter, /Agradecemos de coração/);
+});
+
+test('English default templates already saved are upgraded to Portuguese, edited ones are kept', async () => {
+  const { openDb, getSettings } = await import('../src/db/index.js');
+  const { mkdtempSync } = await import('node:fs');
+  const file = `${mkdtempSync('/tmp/cp-db-')}/c.db`;
+  let db = openDb(file);
+  db.prepare("UPDATE settings SET value = 'Thank you for your generous support. No goods or services were provided in exchange for this contribution.' WHERE key = 'receipt_footer'").run();
+  db.prepare("UPDATE settings SET value = 'My own letter' WHERE key = 'thank_you_body'").run();
+  db.prepare("UPDATE funds SET name = 'General' WHERE name = 'Geral'").run();
+  db.prepare("UPDATE funds SET name = 'Our Shul Fund' WHERE name = 'Kidush'").run();
+  db.close();
+  db = openDb(file);
+  const s = getSettings(db);
+  assert.match(s.receipt_footer, /Agradecemos/);
+  assert.equal(s.thank_you_body, 'My own letter');
+  const names = db.prepare('SELECT name FROM funds').all().map((f) => f.name);
+  assert.ok(names.includes('Geral') && !names.includes('General'));
+  assert.ok(names.includes('Our Shul Fund'));
 });

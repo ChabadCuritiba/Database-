@@ -7,7 +7,7 @@ import { receiptsPdf, yearEndStatementsPdf, lettersPdf } from '../lib/pdf.js';
 import { lettersDocx } from '../lib/word.js';
 import { deliver } from '../lib/messaging.js';
 import { getSettings } from '../db/index.js';
-import { parseMoney, textToHtml } from '../lib/format.js';
+import { parseMoney, textToHtml, salutationOf } from '../lib/format.js';
 import { todayISO } from '../lib/hebrew.js';
 import { audit } from '../lib/audit.js';
 import { str, bool, int, date, ids, oneOf, mustGet, httpError, toCsv } from '../lib/forms.js';
@@ -116,7 +116,7 @@ router.get('/donations/:id/receipt.pdf', async (req, res) => {
   const db = req.app.get('db');
   const data = receiptData(db, [Number(req.params.id)]);
   if (!data.length) throw httpError(404, 'Donation not found');
-  res.type(PDF).attachment(`receipt-${data[0].payment.receipt_number}.pdf`).send(await receiptsPdf(getSettings(db), data));
+  res.type(PDF).attachment(`recibo-${data[0].payment.receipt_number}.pdf`).send(await receiptsPdf(getSettings(db), data));
 });
 
 // Batch receipts for selected payments or a date range.
@@ -129,7 +129,7 @@ router.post('/receipts', async (req, res) => {
   const data = receiptData(db, selected);
   if (!data.length) throw httpError(400, 'No donations selected');
   audit(db, req.user, 'print', 'receipts', null, { count: data.length });
-  res.type(PDF).attachment('receipts.pdf').send(await receiptsPdf(getSettings(db), data));
+  res.type(PDF).attachment('recibos.pdf').send(await receiptsPdf(getSettings(db), data));
 });
 
 // Thank-you letters: print (PDF/Word) or email, then mark as thanked.
@@ -153,8 +153,8 @@ router.post('/thank-you', async (req, res) => {
       if (!l.family.email || l.family.no_email) { skipped++; continue; }
       const receipt = await receiptsPdf(settings, receiptData(db, [l.paymentId]));
       const r = await deliver(db, {
-        channel: 'email', to: l.family.email, familyId: l.family.id, subject: `Thank you from ${settings.org_name}`,
-        text: l.body, html: textToHtml(l.body), attachments: [{ filename: 'receipt.pdf', content: receipt }],
+        channel: 'email', to: l.family.email, familyId: l.family.id, subject: `Obrigado – ${settings.org_name}`,
+        text: l.body, html: textToHtml(l.body), attachments: [{ filename: 'recibo.pdf', content: receipt }],
       });
       if (r.status !== 'failed') { mark.run(l.paymentId); sent++; }
     }
@@ -162,8 +162,8 @@ router.post('/thank-you', async (req, res) => {
     return res.redirect('/finance/payments?unthanked=1');
   }
   if (bool(req.body.mark_thanked)) db.transaction(() => letters.forEach((l) => mark.run(l.paymentId)))();
-  if (format === 'docx') return res.type(DOCX).attachment('thank-you-letters.docx').send(await lettersDocx(settings, letters));
-  res.type(PDF).attachment('thank-you-letters.pdf').send(await lettersPdf(settings, letters));
+  if (format === 'docx') return res.type(DOCX).attachment('cartas-de-agradecimento.docx').send(await lettersDocx(settings, letters));
+  res.type(PDF).attachment('cartas-de-agradecimento.pdf').send(await lettersPdf(settings, letters));
 });
 
 router.get('/year-end', (req, res) => {
@@ -185,14 +185,14 @@ router.post('/year-end', async (req, res) => {
     for (const s of statements) {
       if (!s.family.email || s.family.no_email) continue;
       const pdf = await yearEndStatementsPdf(settings, [s], year);
-      const body = `Dear ${s.family.salutation || `${s.family.family_name} Family`},\n\nAttached is your contribution statement for ${year}. Thank you for your support.\n\n${settings.org_name}`;
-      const r = await deliver(db, { channel: 'email', to: s.family.email, familyId: s.family.id, subject: `${settings.org_name} – ${year} contribution statement`, text: body, html: textToHtml(body), attachments: [{ filename: `statement-${year}.pdf`, content: pdf }] });
+      const body = `Prezado(a) ${salutationOf(s.family)},\n\nSegue em anexo a sua declaração de doações de ${year}. Muito obrigado pelo seu apoio.\n\n${settings.org_name}`;
+      const r = await deliver(db, { channel: 'email', to: s.family.email, familyId: s.family.id, subject: `${settings.org_name} – Declaração de doações ${year}`, text: body, html: textToHtml(body), attachments: [{ filename: `declaracao-doacoes-${year}.pdf`, content: pdf }] });
       if (r.status !== 'failed') sent++;
     }
     req.flash('success', `Emailed ${sent} statements.`);
     return res.redirect(`/finance/year-end?year=${year}`);
   }
-  res.type(PDF).attachment(`statements-${year}.pdf`).send(await yearEndStatementsPdf(settings, statements, year));
+  res.type(PDF).attachment(`declaracoes-${year}.pdf`).send(await yearEndStatementsPdf(settings, statements, year));
 });
 
 // --- Pledges ---

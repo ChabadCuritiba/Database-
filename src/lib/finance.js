@@ -30,7 +30,7 @@ export function recordDonation(db, { familyId, date, splits, method = 'cash', re
 }
 
 export function generalFundId(db) {
-  return (db.prepare("SELECT id FROM funds WHERE name = 'General'").get() || db.prepare('SELECT id FROM funds ORDER BY id LIMIT 1').get()).id;
+  return (db.prepare("SELECT id FROM funds WHERE name IN ('Geral', 'General')").get() || db.prepare('SELECT id FROM funds ORDER BY id LIMIT 1').get()).id;
 }
 
 export function pledgeBalance(db, pledgeId) {
