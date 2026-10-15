@@ -112,7 +112,7 @@ export const TOOLS = [
     name: 'create_contact',
     kind: 'write',
     permission: 'contacts.write',
-    description: 'Create a new contact (family). Search first to avoid duplicates. Include family members mentioned together (e.g. a spouse).',
+    description: 'Create a new contact (family). It checks for existing similar contacts itself, so no search is needed first. Include family members mentioned together (e.g. a spouse).',
     parameters: {
       type: 'object',
       properties: {
@@ -124,6 +124,7 @@ export const TOOLS = [
         phone: S('Other phone'),
         city: S('City'),
         notes: S('Notes'),
+        confirmed_new: { type: 'boolean', description: 'True only after the user said to create it even though similar contacts exist' },
         members: {
           type: 'array',
           description: 'Other family members to add',
@@ -146,13 +147,26 @@ export const TOOLS = [
         })).filter((m) => m.first_name),
       };
       if (v.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) fail(`"${v.email}" is not a valid email address; ask the user to spell it.`);
+      // Possible duplicates: same email, or a contact matching the family or first name.
+      const similar = new Map();
+      if (v.email) for (const f of findFamilies(db, { q: v.email }, { limit: 5 }).rows) similar.set(f.id, f);
+      for (const q of [v.family_name, v.first_name].filter(Boolean)) {
+        for (const f of findFamilies(db, { q }, { limit: 5 }).rows) similar.set(f.id, f);
+      }
       const parts = [`Criar contato "${v.family_name}"`];
       if (v.first_name) parts.push(`titular ${v.first_name}`);
       if (v.email) parts.push(`email ${v.email}`);
       if (v.mobile) parts.push(`celular ${v.mobile}`);
       if (v.city) parts.push(`cidade ${v.city}`);
       for (const m of v.members) parts.push(`com ${m.first_name}${m.last_name ? ` ${m.last_name}` : ''} (${RELATION_PT[m.relation]})`);
-      return { args: v, summary: parts.join(', ') };
+      const out = { args: v, summary: parts.join(', ') };
+      if (similar.size && !a.confirmed_new) {
+        out.warning = {
+          message: 'Similar contacts already exist. Ask the user whether one of them is the same person (then use it) or whether to create a new contact anyway (then call create_contact again with confirmed_new: true).',
+          similar: [...similar.values()].slice(0, 5).map(brief),
+        };
+      }
+      return out;
     },
     execute(db, user, v) {
       const id = db.transaction(() => {

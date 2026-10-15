@@ -26,7 +26,7 @@ function systemPrompt(user, settings) {
     'Reply in the language the user speaks (usually Brazilian Portuguese). Your replies are read aloud: keep them short and natural,',
     'one to three sentences, plain text without markdown, lists or emojis. Say amounts like "cento e oitenta reais" only if natural.',
     'Use the tools to look things up and to make changes. Never invent contacts, ids, emails, dates or amounts.',
-    'Before creating a contact, search for it; if a similar contact exists, ask whether to use it. If a search returns several matches, ask which one.',
+    'To act on an existing contact, search for it first; if a search returns several matches, ask which one. create_contact checks for duplicates itself.',
     'Spell emails exactly as the user said them; if an email or name spelling is unclear, ask.',
     'Changes are not saved until the user confirms: after calling a change tool, tell the user exactly what will be done and ask "Confirma?".',
     'Never say a change was made unless the system told you it was confirmed.',
@@ -111,6 +111,8 @@ async function converse(db, user, state, settings) {
     if (!calls.length) {
       return { reply: textOf(content) || 'Ok.', pending: state.pending.map((p) => ({ summary: p.summary })) };
     }
+    let proposed = 0;
+    let needsModel = false;
     const responses = calls.map(({ functionCall: fc }) => {
       const { tool, error } = findTool(user, fc.name);
       let response;
@@ -120,20 +122,33 @@ async function converse(db, user, state, settings) {
           if (tool.kind === 'read') response = { result: tool.run(db, user, fc.args || {}) };
           else {
             const prepared = tool.prepare(db, user, fc.args || {});
-            state.pending.push({ tool: tool.name, args: prepared.args, summary: prepared.summary });
-            response = {
-              status: 'awaiting_user_confirmation',
-              summary: prepared.summary,
-              instruction: 'Not saved yet. Tell the user exactly this and ask them to confirm (sim/não).',
-            };
+            if (prepared.warning) {
+              response = { status: 'not_proposed', warning: prepared.warning };
+            } else {
+              state.pending.push({ tool: tool.name, args: prepared.args, summary: prepared.summary });
+              proposed++;
+              response = {
+                status: 'awaiting_user_confirmation',
+                summary: prepared.summary,
+                instruction: 'Not saved yet. The user is being asked to confirm (sim/não).',
+              };
+            }
           }
         } catch (e) {
           response = { error: e instanceof ToolError ? e.message : `Unexpected error: ${e.message}` };
         }
       }
+      if (!response.status || response.status !== 'awaiting_user_confirmation') needsModel = true;
       return { functionResponse: { name: fc.name, ...(fc.id ? { id: fc.id } : {}), response } };
     });
     state.contents.push({ role: 'user', parts: responses });
+    if (proposed && !needsModel) {
+      // Every call was a change ready for confirmation: ask the user directly
+      // instead of waiting for the model to phrase it (saves a full round trip).
+      const reply = `${state.pending.map((p) => p.summary).join('. ')}. Confirma?`;
+      state.contents.push({ role: 'model', parts: [{ text: reply }] });
+      return { reply, pending: state.pending.map((p) => ({ summary: p.summary })) };
+    }
   }
   return { reply: 'Desculpe, me enrolei com esse pedido. Pode dizer de outro jeito?', pending: state.pending.map((p) => ({ summary: p.summary })) };
 }

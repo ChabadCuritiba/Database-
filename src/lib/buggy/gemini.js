@@ -7,6 +7,18 @@ let cachedModels = null;
 // Models that recently answered "busy" are skipped for a while.
 const cooldown = new Map();
 const COOLDOWN_MS = 5 * 60 * 1000;
+// Models that rejected our thinking setting; they get requests without it.
+const noThinkingConfig = new Set();
+
+/**
+ * Keep "thinking" to a minimum: Buggy's tasks are simple and speed matters.
+ * Gemini 2.x takes a token budget, Gemini 3+ a level.
+ */
+export function thinkingConfigFor(model) {
+  const v = Number((model.match(/^gemini-([\d.]+)-/) || [])[1]);
+  if (!v) return null;
+  return v < 3 ? { thinkingBudget: 0 } : { thinkingLevel: 'low' };
+}
 
 async function call(path, { method = 'GET', body } = {}) {
   const res = await fetch(`${config.gemini.baseUrl}/${path}`, {
@@ -84,21 +96,31 @@ export const gemini = {
    * Busy answers are retried, then the next model in the chain is tried.
    */
   async generate({ system, contents, tools }) {
-    const body = {
-      systemInstruction: { parts: [{ text: system }] },
-      contents,
-      tools: [{ functionDeclarations: tools }],
-      toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
-      generationConfig: { temperature: 0.2 },
+    const bodyFor = (model) => {
+      const thinking = noThinkingConfig.has(model) ? null : thinkingConfigFor(model);
+      return {
+        systemInstruction: { parts: [{ text: system }] },
+        contents,
+        tools: [{ functionDeclarations: tools }],
+        toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+        generationConfig: { temperature: 0.2, ...(thinking ? { thinkingConfig: thinking } : {}) },
+      };
     };
     let data;
     let lastError;
     for (const model of await modelChain()) {
       for (let attempt = 0; attempt <= this.retryDelays.length && !data; attempt++) {
+        const started = Date.now();
         try {
-          data = await call(`models/${encodeURIComponent(model)}:generateContent`, { method: 'POST', body });
+          data = await call(`models/${encodeURIComponent(model)}:generateContent`, { method: 'POST', body: bodyFor(model) });
+          if (process.env.BUGGY_DEBUG) console.log(`[buggy] ${model} answered in ${Date.now() - started} ms`);
         } catch (e) {
           lastError = e;
+          if (e.status === 400 && /thinking/i.test(e.message) && !noThinkingConfig.has(model)) {
+            noThinkingConfig.add(model); // this model does not accept the setting: retry without it
+            attempt--;
+            continue;
+          }
           if (e.status === 404) break; // this model is not available: try the next one
           if (!isBusy(e)) throw e;
           if (attempt < this.retryDelays.length) await sleep(this.retryDelays[attempt]);

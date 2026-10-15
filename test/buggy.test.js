@@ -37,7 +37,6 @@ test('Buggy adds a contact with a family member only after confirmation', async 
   const calls = fakeGemini([
     callTool('search_contacts', { query: 'Joseli' }),
     callTool('create_contact', { family_name: 'Joseli', first_name: 'Joseli', email: 'Joseli@Gmail.com', members: [{ first_name: 'Dimini', relation: 'spouse' }] }),
-    say('Vou criar o contato Joseli com email joseli@gmail.com e a Dimini. Confirma?'),
   ]);
   const { agent, page } = await buggyAgent(app, 'staff');
   assert.match(page.text, /Buggy/);
@@ -48,6 +47,8 @@ test('Buggy adds a contact with a family member only after confirmation', async 
   assert.equal(res.body.pending.length, 1);
   assert.match(res.body.pending[0].summary, /Criar contato "Joseli".*joseli@gmail\.com.*Dimini \(cônjuge\)/);
   assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name = 'Joseli'").get().n, 0, 'nothing saved before confirming');
+  assert.equal(calls.length, 2, 'the confirmation question needs no extra model call');
+  assert.match(res.body.reply, /Criar contato "Joseli".*Confirma\?$/);
 
   // The tool results went back to the model, and the model reply (with its thought signature) was kept verbatim.
   const second = calls[1].contents;
@@ -73,9 +74,7 @@ test('Buggy: cancelling saves nothing; confirm buttons work', async () => {
   const fid = createFamily(db);
   fakeGemini([
     callTool('record_donation', { family_id: fid, amount: 180, method: 'pix' }),
-    say('Registrar R$ 180 do Cohen via PIX. Confirma?'),
     callTool('record_donation', { family_id: fid, amount: 36.5, fund: 'construção' }),
-    say('Confirma?'),
   ]);
   const { agent } = await buggyAgent(app, 'finance');
   let res = await chat(agent, 'Cohen deu 180 por pix');
@@ -117,7 +116,6 @@ test('Buggy adds a Yahrzeit from a Hebrew date and answers lookups', async () =>
   const fid = createFamily(db);
   const calls = fakeGemini([
     callTool('add_occasion', { family_id: fid, type: 'yahrzeit', name: 'Avraham Cohen', hebrew_day: 5, hebrew_month: 'Cheshvan', hebrew_year: 5786 }),
-    say('Confirma?'),
     callTool('get_contact', { family_id: fid }),
     say('O próximo Yahrzeit é 5 de Cheshvan.'),
   ]);
@@ -127,7 +125,7 @@ test('Buggy adds a Yahrzeit from a Hebrew date and answers lookups', async () =>
   res = await chat(agent, 'pode');
   assert.equal(db.prepare('SELECT gregorian_date FROM occasions').get().gregorian_date, '2025-10-27');
   res = await chat(agent, 'Quando é o Yahrzeit?');
-  const result = calls[3].contents.at(-1).parts[0].functionResponse.response.result;
+  const result = calls[2].contents.at(-1).parts[0].functionResponse.response.result;
   assert.equal(result.occasions[0].type, 'yahrzeit');
   assert.ok(result.occasions[0].next_hebrew_date.startsWith('5 Cheshvan'));
   assert.equal(result.recent_donations, undefined, 'staff do not see donations');
@@ -175,6 +173,7 @@ test('Gemini REST request has the expected shape', async () => {
     assert.equal(gen.key, 'test-key');
     assert.deepEqual(gen.body.systemInstruction, { parts: [{ text: 'sys' }] });
     assert.equal(gen.body.tools[0].functionDeclarations[0].name, 't');
+    assert.deepEqual(gen.body.generationConfig.thinkingConfig, { thinkingLevel: 'low' });
   } finally {
     Object.assign(config.gemini, saved);
     server.close();
@@ -242,4 +241,62 @@ test('Buggy can be installed as an app: manifest and root service worker are ser
   assert.equal(manifest.name, 'Buggy');
   assert.equal(manifest.display, 'standalone');
   assert.ok(manifest.icons.some((i) => i.sizes === '512x512'));
+});
+
+test('create_contact warns about similar contacts and lets the model ask first', async () => {
+  const { db, app } = setup();
+  createFamily(db, { family_name: 'Saverman', email: 'jamile@gmail.com' });
+  const calls = fakeGemini([
+    callTool('create_contact', { family_name: 'Saverman', first_name: 'Jamile', email: 'jamile@gmail.com' }),
+    say('Já existe uma família Saverman com esse email. É a mesma pessoa?'),
+    callTool('create_contact', { family_name: 'Saverman', first_name: 'Jamile', email: 'jamile@gmail.com', confirmed_new: true }),
+  ]);
+  const { agent } = await buggyAgent(app, 'staff');
+  let res = await chat(agent, 'Add Jamile Saverman, jamile@gmail.com');
+  assert.equal(res.body.pending.length, 0);
+  assert.match(res.body.reply, /Já existe/);
+  const warning = calls[1].contents.at(-1).parts[0].functionResponse.response.warning;
+  assert.equal(warning.similar[0].family_name, 'Saverman');
+  res = await chat(agent, 'Cria um novo mesmo assim');
+  assert.equal(res.body.pending.length, 1);
+});
+
+test('thinking is kept minimal for each Gemini generation', async () => {
+  const { thinkingConfigFor } = await import('../src/lib/buggy/gemini.js');
+  assert.deepEqual(thinkingConfigFor('gemini-2.5-flash'), { thinkingBudget: 0 });
+  assert.deepEqual(thinkingConfigFor('gemini-3-flash'), { thinkingLevel: 'low' });
+  assert.equal(thinkingConfigFor('custom-model'), null);
+});
+
+test('a model that rejects the thinking setting is retried without it', async () => {
+  const bodies = [];
+  const server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => {
+      res.setHeader('content-type', 'application/json');
+      if (req.url.startsWith('/models?')) return res.end(JSON.stringify({ models: [{ name: 'models/gemini-3-flash', supportedGenerationMethods: ['generateContent'] }] }));
+      const parsed = JSON.parse(body);
+      bodies.push(parsed);
+      if (parsed.generationConfig.thinkingConfig) {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ error: { code: 400, message: 'Invalid value at generation_config.thinking_config.thinking_level' } }));
+      }
+      res.end(JSON.stringify({ candidates: [{ content: { role: 'model', parts: [{ text: 'ok' }] } }] }));
+    });
+  });
+  await new Promise((r) => server.listen(0, r));
+  const saved = { ...config.gemini };
+  Object.assign(config.gemini, { apiKey: 'k', model: '', baseUrl: `http://127.0.0.1:${server.address().port}` });
+  try {
+    const mod = await import(`../src/lib/buggy/gemini.js?think=${Date.now()}`);
+    const req = { system: 's', contents: [{ role: 'user', parts: [{ text: 'oi' }] }], tools: [] };
+    assert.equal((await mod.gemini.generate(req)).parts[0].text, 'ok');
+    assert.equal(bodies.length, 2);
+    await mod.gemini.generate(req);
+    assert.equal(bodies.length, 3, 'remembered: no failed attempt the second time');
+  } finally {
+    Object.assign(config.gemini, saved);
+    server.close();
+  }
 });
