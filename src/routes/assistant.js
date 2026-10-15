@@ -53,7 +53,7 @@ router.post('/message', async (req, res) => {
     res.json(result);
   } catch (e) {
     console.error('[buggy]', e);
-    res.status(502).json({ error: `Buggy não conseguiu responder agora. (${e.message})` });
+    res.status(502).json({ error: e.busy ? e.message : `Buggy não conseguiu responder agora. (${e.message})` });
   }
 });
 

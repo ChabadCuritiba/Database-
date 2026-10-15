@@ -183,7 +183,9 @@
       mic.classList.remove('on');
       const t = finalText.trim() || input.value.trim();
       input.value = '';
-      if (t) routeSpeech(t.replace(WAKE, '').trim() || t);
+      const command = t.replace(WAKE, '').trim();
+      if (command) routeSpeech(command);
+      else if (t) { setStatus('Sim? Estou ouvindo…'); beep(); setTimeout(listenOnce, 300); return; } // just "Buggy"
       else if (!busy) setStatus('');
       if (wakeMode) resumeListening();
     };

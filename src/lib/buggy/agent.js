@@ -86,7 +86,20 @@ export async function handleMessage(db, user, state, text, settings = {}) {
     cancelPending(state, 'O usuário mudou de assunto antes de confirmar');
   }
 
+  const before = state.contents.length;
+  const pendingBefore = state.pending.length;
   state.contents.push({ role: 'user', parts: [{ text }] });
+  try {
+    return await converse(db, user, state, settings);
+  } catch (e) {
+    // Forget the failed turn so the conversation stays valid for the next try.
+    state.contents.splice(before);
+    state.pending.splice(pendingBefore);
+    throw e;
+  }
+}
+
+async function converse(db, user, state, settings) {
   const tools = toolsFor(user);
   const decls = declarations(tools);
 

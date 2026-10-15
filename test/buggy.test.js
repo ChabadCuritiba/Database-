@@ -145,7 +145,9 @@ test('Buggy page explains setup when no Gemini key is configured', async () => {
 
 test('pickModel prefers the newest stable Gemini Flash model', () => {
   assert.equal(pickModel(['models/gemini-2.5-flash', 'models/gemini-3-flash-preview', 'models/gemini-2.5-pro', 'models/gemini-3-flash', 'models/gemini-3-flash-lite']), 'gemini-3-flash');
-  assert.equal(pickModel(['models/gemini-2.5-flash', 'models/gemini-3.6-flash-preview']), 'gemini-3.6-flash-preview');
+  // Stable models come before previews, which are often overloaded.
+  assert.equal(pickModel(['models/gemini-2.5-flash', 'models/gemini-3.6-flash-preview']), 'gemini-2.5-flash');
+  assert.equal(pickModel(['models/gemini-3.6-flash-preview']), 'gemini-3.6-flash-preview');
   assert.equal(pickModel(['models/text-embedding-004']), null);
 });
 
@@ -173,6 +175,55 @@ test('Gemini REST request has the expected shape', async () => {
     assert.equal(gen.key, 'test-key');
     assert.deepEqual(gen.body.systemInstruction, { parts: [{ text: 'sys' }] });
     assert.equal(gen.body.tools[0].functionDeclarations[0].name, 't');
+  } finally {
+    Object.assign(config.gemini, saved);
+    server.close();
+  }
+});
+
+test('Gemini busy: retries, then falls back to the next model; a failed turn is forgotten', async () => {
+  const hits = [];
+  const server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => {
+      hits.push(req.url);
+      res.setHeader('content-type', 'application/json');
+      if (req.url.startsWith('/models?')) {
+        return res.end(JSON.stringify({ models: ['gemini-9-flash', 'gemini-8-flash'].map((n) => ({ name: `models/${n}`, supportedGenerationMethods: ['generateContent'] })) }));
+      }
+      if (req.url.includes('gemini-9-flash') || server.allBusy) {
+        res.statusCode = 503;
+        return res.end(JSON.stringify({ error: { code: 503, message: 'This model is currently experiencing high demand.' } }));
+      }
+      res.end(JSON.stringify({ candidates: [{ content: { role: 'model', parts: [{ text: 'Oi!' }] } }] }));
+    });
+  });
+  await new Promise((r) => server.listen(0, r));
+  const saved = { ...config.gemini };
+  Object.assign(config.gemini, { apiKey: 'k', model: '', baseUrl: `http://127.0.0.1:${server.address().port}` });
+  try {
+    const mod = await import(`../src/lib/buggy/gemini.js?busy=${Date.now()}`);
+    mod.gemini.retryDelays = [1, 1];
+    const req = { system: 's', contents: [{ role: 'user', parts: [{ text: 'oi' }] }], tools: [] };
+    const out = await mod.gemini.generate(req);
+    assert.equal(out.parts[0].text, 'Oi!');
+    assert.equal(hits.filter((u) => u.includes('gemini-9-flash:')).length, 3, 'busy model tried 3 times');
+    // The busy model is skipped on the next request.
+    hits.length = 0;
+    await mod.gemini.generate(req);
+    assert.deepEqual(hits.filter((u) => u.includes(':generateContent')), ['/models/gemini-8-flash:generateContent']);
+
+    // Everything busy: a friendly error, and the conversation does not keep the failed message.
+    server.allBusy = true;
+    await assert.rejects(mod.gemini.generate(req), /ocupados/);
+    const { handleMessage, newState } = await import('../src/lib/buggy/agent.js');
+    const { gemini: shared } = await import('../src/lib/buggy/gemini.js');
+    shared.generate = async () => { throw Object.assign(new Error('Os servidores do Google estão ocupados agora.'), { busy: true }); };
+    const state = newState();
+    const { db } = setup();
+    await assert.rejects(handleMessage(db, { id: 1, role: 'admin', active: 1 }, state, 'oi'), /ocupados/);
+    assert.equal(state.contents.length, 0);
   } finally {
     Object.assign(config.gemini, saved);
     server.close();
