@@ -216,3 +216,32 @@ details > summary { cursor: pointer; }
 .bulkbar-top { position: sticky; top: 0; z-index: 5; background: #fffbea; border: 1px solid #fedf89; border-radius: 6px; padding: 8px 12px; margin-bottom: 8px; }
 .bulkbar-top select { max-width: 260px; }
 .bulkbar .sep { color: var(--muted); }
+
+/* Buggy assistant */
+.buggy { max-width: 760px; margin: 0 auto; }
+.buggy-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.buggy-head h1 { margin: 0; }
+.buggy-head p { margin: 0; }
+.buggy-logo { border-radius: 12px; }
+.buggy-tools { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.buggy-tools select { padding: 4px 6px; }
+.chat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; height: min(52vh, 520px); overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.bubble { max-width: 85%; padding: 9px 13px; border-radius: 16px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
+.buggy-msg { background: #eef3fa; align-self: flex-start; border-bottom-left-radius: 4px; }
+.me-msg { background: var(--primary); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+.bubble.thinking { color: var(--muted); }
+.bubble-link { font-weight: 600; }
+.confirm-card { background: #fffbea; border: 1px solid #fedf89; border-radius: var(--radius); padding: 12px 14px; margin-top: 10px; }
+.confirm-card ul { margin: 6px 0 10px; padding-left: 18px; }
+.confirm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.composer { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
+.composer input { flex: 1; min-width: 0; padding: 11px 12px; font-size: 1rem; }
+.composer .btn { flex: none; }
+.mic { width: 64px; height: 64px; border-radius: 50%; border: 0; background: var(--primary); color: #fff; cursor: pointer; display: grid; place-items: center; flex: none; box-shadow: 0 4px 14px #1f4e8c55; }
+.mic.on { background: #c0392b; animation: pulse 1.2s infinite; }
+.mic.unsupported { opacity: 0.4; }
+.mic[disabled] { opacity: 0.4; cursor: not-allowed; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 #c0392b88; } 70% { box-shadow: 0 0 0 16px #c0392b00; } 100% { box-shadow: 0 0 0 0 #c0392b00; } }
+.shortcut-help summary { font-weight: 600; }
+.shortcut-help code { word-break: break-all; }
+@media (max-width: 700px) { .buggy-tools { margin-left: 0; } .chat { height: 50vh; } .bubble { max-width: 92%; } }

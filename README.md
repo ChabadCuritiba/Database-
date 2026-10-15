@@ -16,6 +16,7 @@ Contact, Hebrew-calendar, donations, events and communications management for a 
 | **Judaica & holiday orders** | Product catalog by season (Shmura Matzah, Arba Minim, Tefillin, Mezuzah…), family orders, payments and balances, procurement totals per product, online payment links. |
 | **Events** | Dinners, classes, lectures, Shabbatons with adult / student / child pricing and counts, capacity, check-in, CSV. Public sign-up page with online payment. |
 | **Communications** | Email, SMS and robo-call campaigns to any contact selection, with merge fields; mailing labels (Avery 5160 / Pimaco 6180, A4 sheets), envelopes and merged letters (PDF or Word). |
+| **Buggy voice assistant** | Talk or type in Portuguese, English or Hebrew: "Adiciona Joseli e Dimini aos contatos, email …". Powered by Google Gemini; searches and reads instantly, but every change waits for your confirmation, respects the user's role and is written to the audit log. Installable on the phone home screen; opens by voice through Siri Shortcuts or "Ok Google". |
 | **Integrations** | ViaCEP address auto-fill, Microsoft Word (.docx), Twilio (SMS + voice), SMTP email, Stripe Checkout, Google sign-in, optional Google Cloud Storage backups. |
 | **Security** | "Continue with Google" sign-in for invited users only, role-based access, CSRF protection, security headers, audit log, nightly backups with retention. |
 

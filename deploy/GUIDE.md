@@ -88,6 +88,17 @@ Edit `/opt/crm/.env` as in step 4.3 and restart. Until you do, messages are only
 - **SMS & robo-calls:** Twilio account SID, auth token and phone number.
 - **Online payments:** Stripe secret key and webhook secret (see README).
 
+## Optional: Buggy, the voice assistant
+
+1. Go to **aistudio.google.com** → **Get API key** → **Create API key** and pick your Google Cloud / Firebase project. Use a project with billing enabled (e.g. Blaze), so Google does not use your data to improve its products.
+2. Add the key to `/opt/crm/.env`:
+   ```
+   GEMINI_API_KEY=your-key
+   ```
+3. Restart: `sudo systemctl restart crm`. Open **🎙 Buggy** in the menu.
+
+Buggy uses the newest Gemini "Flash" model automatically. To force a specific one, add `GEMINI_MODEL=model-name`. Buggy never saves anything without asking you to confirm. To open it by voice, see "Abrir o Buggy pela voz no celular" on the Buggy page (Siri Shortcut on iPhone, "Ok Google, abrir Buggy" on Android).
+
 ## Everyday tasks
 
 | Task | Command (in the SSH window) |

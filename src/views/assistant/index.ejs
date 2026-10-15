@@ -1,0 +1,81 @@
+<%- include('../partials/header') %>
+<div class="buggy" data-buggy data-csrf="<%= csrfToken %>" data-enabled="<%= enabled ? '1' : '' %>">
+  <div class="buggy-head">
+    <img src="/static/icons/buggy.svg" alt="" class="buggy-logo" width="44" height="44">
+    <div>
+      <h1>Buggy</h1>
+      <p class="muted small" data-status><%= enabled ? 'Toque no microfone e fale, ou escreva abaixo.' : '' %></p>
+    </div>
+    <div class="buggy-tools">
+      <label class="inline small" title="Escutar sempre e responder quando ouvir “Buggy”">
+        <input type="checkbox" data-wake> “Hey Buggy”
+      </label>
+      <label class="inline small"><input type="checkbox" data-speak checked> Falar respostas</label>
+      <select data-lang aria-label="Idioma" class="small">
+        <option value="pt-BR">Português</option>
+        <option value="en-US">English</option>
+        <option value="he-IL">עברית</option>
+      </select>
+      <button type="button" class="link small" data-reset>Nova conversa</button>
+    </div>
+  </div>
+
+  <% if (!enabled) { %>
+    <div class="flash flash-warning">
+      Buggy ainda não está ligado. Um administrador precisa colocar a chave do Google Gemini no servidor
+      (<code>GEMINI_API_KEY</code> em <code>/opt/crm/.env</code>) e reiniciar o app.
+    </div>
+  <% } %>
+
+  <div class="chat" data-chat aria-live="polite">
+    <% if (!history.length) { %>
+      <div class="bubble buggy-msg">Shalom! Eu sou o Buggy. Posso procurar contatos, adicionar pessoas, registrar doações e Yahrzeits. Por exemplo: “Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com”.</div>
+    <% } %>
+    <% for (const m of history) { %>
+      <div class="bubble <%= m.who === 'me' ? 'me-msg' : 'buggy-msg' %>"><%= m.text %></div>
+    <% } %>
+  </div>
+
+  <div class="confirm-card" data-confirm-card <%= pending.length ? '' : 'hidden' %>>
+    <strong>Confirmar?</strong>
+    <ul data-pending><% for (const p of pending) { %><li><%= p.summary %></li><% } %></ul>
+    <div class="confirm-actions">
+      <button type="button" class="btn" data-yes>✓ Sim, salvar</button>
+      <button type="button" class="btn btn-light" data-no>Cancelar</button>
+    </div>
+  </div>
+
+  <form class="composer" data-composer>
+    <button type="button" class="mic" data-mic aria-label="Falar" <%= enabled ? '' : 'disabled' %>>
+      <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg>
+    </button>
+    <input type="text" data-input placeholder="Escreva para o Buggy…" autocomplete="off" <%= enabled ? '' : 'disabled' %>>
+    <button class="btn" <%= enabled ? '' : 'disabled' %>>Enviar</button>
+  </form>
+
+  <details class="card shortcut-help">
+    <summary>Abrir o Buggy pela voz no celular</summary>
+    <div class="cols">
+      <div>
+        <h3>iPhone — “E aí Siri, Buggy”</h3>
+        <ol class="small">
+          <li>Abra o app <strong>Atalhos</strong> (Shortcuts) → <strong>+</strong>.</li>
+          <li>Adicione a ação <strong>Abrir URL</strong> com: <code data-shortcut-url></code></li>
+          <li>Dê o nome <strong>Buggy</strong> ao atalho.</li>
+          <li>Diga <strong>“E aí Siri, Buggy”</strong> (ou “Hey Siri, Buggy”). Na primeira vez, toque no microfone para permitir o acesso.</li>
+        </ol>
+      </div>
+      <div>
+        <h3>Android — “Ok Google, abrir Buggy”</h3>
+        <ol class="small">
+          <li>Nesta página, no Chrome, toque em <strong>⋮</strong> → <strong>Instalar app</strong> (ou “Adicionar à tela inicial”).</li>
+          <li>O Buggy aparece como um app.</li>
+          <li>Diga <strong>“Ok Google, abrir Buggy”</strong>. Ele já abre escutando.</li>
+        </ol>
+      </div>
+    </div>
+    <p class="small muted">Com a página aberta e a tela ligada, marque <strong>“Hey Buggy”</strong> para falar sem tocar em nada: diga “Buggy” e o pedido.</p>
+  </details>
+</div>
+<script src="/static/js/buggy.js?v=<%= assetVersion %>" defer></script>
+<%- include('../partials/footer') %>

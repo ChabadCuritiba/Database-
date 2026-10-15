@@ -63,6 +63,13 @@ export const config = {
     cron: env.BACKUP_CRON || '0 3 * * *',
     gcsBucket: env.GCS_BUCKET || '',
   },
+  // Buggy, the voice assistant (Google Gemini). GEMINI_MODEL is optional:
+  // when empty, the newest available Gemini "Flash" model is used.
+  gemini: {
+    apiKey: env.GEMINI_API_KEY || '',
+    model: env.GEMINI_MODEL || '',
+    baseUrl: (env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta').replace(/\/$/, ''),
+  },
   reminderCron: env.REMINDER_CRON || '0 8 * * *',
   viacepUrl: env.VIACEP_URL || 'https://viacep.com.br/ws',
 };

@@ -25,6 +25,7 @@ import commsRoutes from './routes/comms.js';
 import adminRoutes from './routes/admin.js';
 import apiRoutes from './routes/api.js';
 import webhookRoutes from './routes/webhooks.js';
+import assistantRoutes from './routes/assistant.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(here, '..', 'public');
@@ -32,7 +33,7 @@ const publicDir = path.join(here, '..', 'public');
 // Fingerprint of the CSS/JS so browsers fetch new versions right after an update.
 function assetVersion() {
   const hash = crypto.createHash('sha1');
-  for (const f of ['css/app.css', 'js/app.js']) hash.update(fs.readFileSync(path.join(publicDir, f)));
+  for (const f of ['css/app.css', 'js/app.js', 'js/buggy.js']) hash.update(fs.readFileSync(path.join(publicDir, f)));
   return hash.digest('hex').slice(0, 10);
 }
 
@@ -52,6 +53,7 @@ export function createApp(db) {
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https://*.googleusercontent.com'],
           formAction: ["'self'", 'https://accounts.google.com', 'https://checkout.stripe.com'],
+          manifestSrc: ["'self'"],
           upgradeInsecureRequests: config.isProd ? [] : null,
         },
       },
@@ -110,6 +112,7 @@ export function createApp(db) {
   app.use('/events', requireLogin, eventRoutes);
   app.use('/comms', requireLogin, commsRoutes);
   app.use('/admin', requireLogin, adminRoutes);
+  app.use('/assistant', requireLogin, assistantRoutes);
 
   app.use((req, res) => res.status(404).render('error', { title: 'Not found', message: 'That page does not exist.' }));
   // eslint-disable-next-line no-unused-vars
