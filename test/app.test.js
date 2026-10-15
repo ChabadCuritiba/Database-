@@ -395,7 +395,4 @@ test('admins can delete users, but not themselves or the last admin', async () =
   await agent.postForm(`/admin/users/${vid}/delete`);
   res = await victim.get('/families');
   assert.equal(res.headers.location, '/login');
-
-});
-  assert.equal(res.status, 400);
 });
