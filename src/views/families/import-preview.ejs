@@ -1,0 +1,49 @@
+<%- include('../partials/header') %>
+<h1>Import contacts <span class="muted">· <%= parsed.rows.length %> rows</span></h1>
+<form method="post" action="/families/import" class="form">
+  <%- include('../partials/csrf') %>
+  <textarea name="csv" hidden><%= csv %></textarea>
+  <section class="card">
+    <h2>1. Check the columns</h2>
+    <p class="small muted">Columns were matched automatically. Change any that are wrong, or choose “— ignore —”.</p>
+    <table class="table">
+      <thead><tr><th>Column in your file</th><th>Example</th><th>Import as</th></tr></thead>
+      <% parsed.header.forEach((h, i) => { %>
+      <tr>
+        <td><strong><%= h || `(column ${i + 1})` %></strong></td>
+        <td class="small muted"><%= (sample.find((r) => r[i] && r[i].trim()) || [])[i] || '' %></td>
+        <td>
+          <select name="map_<%= i %>">
+            <option value="">— ignore —</option>
+            <% for (const [k, label] of Object.entries(fields)) { %><option value="<%= k %>" <%= mapping[i] === k ? 'selected' : '' %>><%= label %></option><% } %>
+          </select>
+        </td>
+      </tr>
+      <% }) %>
+    </table>
+  </section>
+  <section class="card">
+    <h2>2. Preview</h2>
+    <table class="table small">
+      <thead><tr><th>Family</th><th>First name</th><th>Email</th><th>Mobile</th><th>City</th></tr></thead>
+      <% for (const v of preview) { %>
+      <tr><td><%= v.family_name || '— missing —' %></td><td><%= v.first_name %></td><td><%= v.email %></td><td><%= v.mobile %></td><td><%= v.city %></td></tr>
+      <% } %>
+    </table>
+    <p class="small muted">The preview uses the automatic column matching; changes above are applied when you import.</p>
+  </section>
+  <section class="card">
+    <h2>3. Options</h2>
+    <p><strong>Contacts that already exist</strong> (same email):</p>
+    <label class="inline"><input type="radio" name="duplicates" value="skip" checked> Skip them</label>
+    <label class="inline"><input type="radio" name="duplicates" value="update"> Fill in their missing details</label>
+    <% if (categories.length) { %>
+    <label class="w-md" style="margin-top:12px">Also tag all imported contacts with
+      <select name="category_id"><option value="">— no category —</option><% for (const c of categories) { %><option value="<%= c.id %>"><%= c.path %></option><% } %></select>
+    </label>
+    <% } %>
+  </section>
+  <button class="btn">Import <%= parsed.rows.length %> rows</button>
+  <a href="/families/import">Choose another file</a>
+</form>
+<%- include('../partials/footer') %>

@@ -4,6 +4,7 @@
   <div class="actions">
     <% if (can('contacts.write')) { %>
       <a class="btn" href="/families/new">+ New contact</a>
+      <a class="btn btn-light" href="/families/import">Import CSV</a>
       <a class="btn btn-light" href="/families/export.csv?<%= qs %>">Export CSV</a>
     <% } %>
     <a class="btn btn-light" href="/categories">Categories</a>

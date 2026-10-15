@@ -6,6 +6,7 @@ import { openPledges, splitsFor, orderTotal, amountPaid } from '../lib/finance.j
 import { audit } from '../lib/audit.js';
 import { str, bool, int, date, ids, oneOf, mustGet, toCsv, httpError } from '../lib/forms.js';
 import { formatAddress } from '../lib/format.js';
+import { parseCsv, guessMapping, rowToContact, importContacts, FIELDS } from '../lib/csvImport.js';
 
 const router = express.Router();
 const PAGE = 50;
@@ -46,6 +47,50 @@ router.get('/', requirePermission('contacts.read'), (req, res) => {
     title: 'Contacts', rows, total, page, pages: Math.ceil(total / PAGE), criteria, qs,
     categories: categoryTree(db), affiliations: distinct(db, 'affiliation'), sources: distinct(db, 'source'), cities: distinct(db, 'city'),
   });
+});
+
+// --- CSV import: upload -> check columns -> import ---
+const MAX_IMPORT_ROWS = 20000;
+
+router.get('/import', requirePermission('contacts.write'), (req, res) => {
+  res.render('families/import', { title: 'Import contacts' });
+});
+
+router.get('/import/template.csv', requirePermission('contacts.write'), (req, res) => {
+  const header = ['Sobrenome', 'Primeiro nome', 'Cônjuge', 'Saudação', 'Email', 'Celular', 'Telefone', 'Rua', 'Número', 'Complemento', 'Bairro', 'Cidade', 'Estado', 'CEP', 'CPF', 'Afiliação', 'Prioridade', 'Origem', 'Categorias', 'Observações'];
+  const example = ['Cohen', 'David', 'Miriam', 'Sr. e Sra. Cohen', 'david@example.com', '(41) 99999-0000', '', 'Rua XV de Novembro', '100', 'ap 12', 'Centro', 'Curitiba', 'PR', '80020-000', '', 'Membro', '2', 'Jantar de Shabat', 'Pessach; Newsletter', ''];
+  res.type('text/csv').attachment('modelo-contatos.csv').send(`\uFEFF${header.join(';')}\r\n${example.join(';')}\r\n`);
+});
+
+router.post('/import/preview', requirePermission('contacts.write'), (req, res) => {
+  const db = req.app.get('db');
+  const csv = String(req.body.csv || '');
+  const parsed = parseCsv(csv);
+  if (!parsed.header.length || !parsed.rows.length) throw httpError(400, 'The file is empty or has only a header row.');
+  if (parsed.rows.length > MAX_IMPORT_ROWS) throw httpError(400, `Too many rows (${parsed.rows.length}); split the file into parts of ${MAX_IMPORT_ROWS}.`);
+  const mapping = guessMapping(parsed.header);
+  res.render('families/import-preview', {
+    title: 'Import contacts', csv, parsed, mapping, fields: FIELDS, sample: parsed.rows.slice(0, 5),
+    preview: parsed.rows.slice(0, 5).map((r) => rowToContact(r, mapping)), categories: categoryTree(db),
+  });
+});
+
+router.post('/import', requirePermission('contacts.write'), (req, res) => {
+  const db = req.app.get('db');
+  const parsed = parseCsv(String(req.body.csv || ''));
+  if (!parsed.rows.length) throw httpError(400, 'Nothing to import.');
+  // Column choices arrive as map_0, map_1, ... (not an array, so large files keep their order).
+  const mapping = parsed.header.map((_, i) => (FIELDS[req.body[`map_${i}`]] ? req.body[`map_${i}`] : ''));
+  if (!mapping.includes('family_name') && !mapping.includes('full_name')) {
+    throw httpError(400, 'Choose which column holds the family name or the full name.');
+  }
+  const result = importContacts(db, parsed.rows, {
+    mapping,
+    duplicates: oneOf(req.body.duplicates, ['skip', 'update'], 'skip'),
+    categoryId: int(req.body.category_id),
+    user: req.user,
+  });
+  res.render('families/import-result', { title: 'Import finished', result, total: parsed.rows.length });
 });
 
 router.get('/export.csv', requirePermission('contacts.write'), (req, res) => {

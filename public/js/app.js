@@ -65,6 +65,27 @@
     update();
   });
 
+  // CSV import: read the chosen file into the form. Excel in Brazil often saves
+  // Windows-1252 instead of UTF-8, so fall back to it when the bytes are not valid UTF-8.
+  $$('input[data-csv-file]').forEach((fileInput) => {
+    const form = fileInput.form;
+    const text = form.querySelector('[data-csv-text]');
+    const status = form.querySelector('[data-csv-status]');
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const bytes = await file.arrayBuffer();
+      let content;
+      try { content = new TextDecoder('utf-8', { fatal: true }).decode(bytes); } catch { content = new TextDecoder('windows-1252').decode(bytes); }
+      text.value = content;
+      const lines = content.split(/\r?\n/).filter((l) => l.trim()).length;
+      if (status) status.textContent = `${file.name}: ${Math.max(0, lines - 1)} rows found.`;
+    });
+    form.addEventListener('submit', (e) => {
+      if (!text.value.trim()) { e.preventDefault(); if (status) status.textContent = 'Choose a CSV file first.'; }
+    });
+  });
+
   // CEP lookup (ViaCEP) fills the address fields.
   $$('input[data-cep]').forEach((input) => {
     const form = input.form;

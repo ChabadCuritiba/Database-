@@ -63,7 +63,7 @@ export function createApp(db) {
   // Stripe needs the raw body to verify signatures, so mount before body parsers.
   app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
 
-  app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' })); // large enough for CSV imports
   app.use(express.json({ limit: '1mb' }));
   app.locals.assetVersion = assetVersion();
   app.use('/static', express.static(publicDir, { maxAge: config.isProd ? '7d' : 0 }));

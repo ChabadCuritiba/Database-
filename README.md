@@ -6,7 +6,7 @@ Contact, Hebrew-calendar, donations, events and communications management for a 
 
 | Area | What it does |
 | --- | --- |
-| **Contacts & families** | Households with primary contact, spouse, children, parents and other relatives; Hebrew names (with father's/mother's name), Kohen/Levi/Yisrael; affiliation, priority (1–5), source, CPF/CNPJ, opt-outs (mail/email/SMS) and admin-defined custom fields. CSV export. |
+| **Contacts & families** | Households with primary contact, spouse, children, parents and other relatives; Hebrew names (with father's/mother's name), Kohen/Levi/Yisrael; affiliation, priority (1–5), source, CPF/CNPJ, opt-outs (mail/email/SMS) and admin-defined custom fields. CSV import (Excel/Google Sheets, columns matched automatically in Portuguese or English, duplicates skipped or completed) and CSV export. |
 | **Categories** | Unlimited nested categories and sub-categories. Filtering by a category includes its sub-categories; match *any* or *all*. Bulk tagging from search results. |
 | **Hebrew calendar** | Built-in engine ([@hebcal/core](https://github.com/hebcal/hebcal-es6)) converts civil dates to Hebrew dates (with "after sunset"), computes the next Yahrzeit, Hebrew birthday, anniversary and Bar/Bat Mitzvah dates, handling Adar I/II and other edge cases. Converter page in both directions. |
 | **Automated reminders** | Daily job emails and/or texts families before Yahrzeits, birthdays and anniversaries. Each reminder is sent once per observance. |

@@ -1,0 +1,20 @@
+<%- include('../partials/header') %>
+<h1>Import finished</h1>
+<div class="stats">
+  <div class="stat"><span><%= result.created %></span>contacts created</div>
+  <div class="stat"><span><%= result.updated %></span>existing contacts completed</div>
+  <div class="stat"><span><%= result.skipped %></span>skipped (already exist or empty)</div>
+  <div class="stat"><span><%= result.errors.length %></span>rows with problems</div>
+</div>
+<% if (result.errors.length) { %>
+<section class="card">
+  <h2>Rows not imported</h2>
+  <table class="table small">
+    <thead><tr><th>Line in file</th><th>Problem</th></tr></thead>
+    <% for (const e of result.errors.slice(0, 200)) { %><tr><td><%= e.row %></td><td><%= e.message %></td></tr><% } %>
+  </table>
+  <% if (result.errors.length > 200) { %><p class="small muted">…and <%= result.errors.length - 200 %> more.</p><% } %>
+</section>
+<% } %>
+<p><a class="btn" href="/families">Go to contacts</a> <a href="/families/import">Import another file</a></p>
+<%- include('../partials/footer') %>

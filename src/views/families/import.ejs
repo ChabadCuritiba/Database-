@@ -1,0 +1,17 @@
+<%- include('../partials/header') %>
+<h1>Import contacts</h1>
+<form method="post" action="/families/import/preview" class="card form">
+  <%- include('../partials/csrf') %>
+  <p>Import contacts from a <strong>CSV file</strong> (Excel: <em>File → Save as → CSV</em>; Google Sheets: <em>File → Download → CSV</em>).
+    The first row must contain the column names. You will check the columns before anything is saved.</p>
+  <label>CSV file<input type="file" accept=".csv,text/csv,.txt" data-csv-file></label>
+  <p class="small muted" data-csv-status></p>
+  <details>
+    <summary class="small">…or paste the contents</summary>
+    <textarea name="csv" rows="8" data-csv-text placeholder="Sobrenome;Primeiro nome;Email;Celular&#10;Cohen;David;david@example.com;(41) 99999-0000"></textarea>
+  </details>
+  <p class="small"><a href="/families/import/template.csv">Download an example file</a> with the recognized columns.</p>
+  <button class="btn">Next: check columns</button>
+  <a href="/families">Cancel</a>
+</form>
+<%- include('../partials/footer') %>
