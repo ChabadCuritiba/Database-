@@ -65,7 +65,7 @@ test('Buggy creates a contact with a family member right away, without asking', 
   assert.ok(db.prepare("SELECT 1 FROM audit_log WHERE details = 'via Buggy'").get());
 });
 
-test('Buggy: cancelling saves nothing; confirm buttons work', async () => {
+test('Buggy records donations right away, without asking for confirmation', async () => {
   const { db, app } = setup();
   const fid = createFamily(db);
   fakeGemini([
@@ -74,17 +74,14 @@ test('Buggy: cancelling saves nothing; confirm buttons work', async () => {
   ]);
   const { agent } = await buggyAgent(app, 'finance');
   let res = await chat(agent, 'Cohen deu 180 por pix');
-  assert.match(res.body.pending[0].summary, /R\$\s180,00 de Cohen, fundo Geral, via PIX/);
-  res = await agent.post('/assistant/confirm').set('x-csrf-token', agent.csrfToken).send({ decision: 'no' });
-  assert.match(res.body.reply, /cancelado/);
-  assert.equal(db.prepare('SELECT COUNT(*) n FROM payments').get().n, 0);
+  assert.equal(res.body.pending.length, 0);
+  assert.equal(db.prepare('SELECT amount, method FROM payments').get().method, 'pix');
 
   res = await chat(agent, 'Cohen deu 36,50 para o fundo de construção');
-  assert.match(res.body.pending[0].summary, /Fundo de Construção/);
-  res = await agent.post('/assistant/confirm').set('x-csrf-token', agent.csrfToken).send({ decision: 'yes' });
-  const p = db.prepare('SELECT * FROM payments').get();
-  assert.equal(p.amount, 3650);
+  assert.equal(res.body.pending.length, 0);
+  const p = db.prepare('SELECT * FROM payments WHERE amount = 3650').get();
   assert.ok(p.receipt_number);
+  assert.equal(db.prepare('SELECT f.name FROM payment_splits s JOIN funds f ON f.id = s.fund_id WHERE s.payment_id = ?').get(p.id).name, 'Fundo de Construção');
 });
 
 test('Buggy refuses tools the user may not use and reports bad input back to the model', async () => {
@@ -117,8 +114,7 @@ test('Buggy adds a Yahrzeit from a Hebrew date and answers lookups', async () =>
   ]);
   const { agent } = await buggyAgent(app, 'staff');
   let res = await chat(agent, 'Adiciona o Yahrzeit do Avraham, 5 de Cheshvan 5786');
-  assert.match(res.body.pending[0].summary, /Yahrzeit de Avraham Cohen \(2025-10-27 = 5 Cheshvan, 5786\)/);
-  res = await chat(agent, 'pode');
+  assert.equal(res.body.pending.length, 0);
   assert.equal(db.prepare('SELECT gregorian_date FROM occasions').get().gregorian_date, '2025-10-27');
   res = await chat(agent, 'Quando é o Yahrzeit?');
   const result = calls[2].contents.at(-1).parts[0].functionResponse.response.result;
@@ -444,18 +440,13 @@ test('Buggy answers in the language chosen on the page', async () => {
   assert.equal(res.body.reply, 'בוצע! איש הקשר "Levi" נוצר.');
   assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name IN ('Edward', 'Levi')").get().n, 2);
 
-  // Confirming, cancelling and errors follow the language too.
+  // Saved changes and errors follow the language too.
   const fid = db.prepare("SELECT id FROM families WHERE family_name = 'Edward'").get().id;
-  const fin = await buggyAgent(app, 'finance');
   fakeGemini([callTool('add_occasion', { family_id: fid, type: 'yahrzeit', name: 'Avraham', date: '2020-03-15' })]);
-  res = await fin.agent.post('/assistant/message').set('x-csrf-token', fin.agent.csrfToken).send({ text: 'add yahrzeit', lang: 'en-US' });
-  assert.match(res.body.reply, /^Add the Yahrzeit of Avraham .* Shall I save it\?$/);
-  res = await fin.agent.post('/assistant/message').set('x-csrf-token', fin.agent.csrfToken).send({ text: 'yes', lang: 'en-US' });
+  res = await send('add yahrzeit', 'en-US');
   assert.equal(res.body.reply, 'Done! Yahrzeit of Avraham added.');
-  fakeGemini([callTool('add_occasion', { family_id: fid, type: 'birthday', name: 'Edward', date: '1990-01-01' })]);
-  await send('add birthday', 'en-US');
   res = await agent.post('/assistant/confirm').set('x-csrf-token', agent.csrfToken).send({ decision: 'no', lang: 'en-US' });
-  assert.equal(res.body.reply, 'OK, cancelled. Nothing was saved.');
+  assert.equal(res.body.reply, 'Nothing is waiting for confirmation.');
   gemini.generate = async () => { throw Object.assign(new Error('busy'), { busy: true }); };
   res = await send('hello', 'en-US');
   assert.match(res.body.error, /Google's servers are busy/);

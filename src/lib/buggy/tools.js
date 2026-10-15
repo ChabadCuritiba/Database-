@@ -225,6 +225,7 @@ export const TOOLS = [
   {
     name: 'update_contact_info',
     kind: 'write',
+    autoSave: true,
     permission: 'contacts.contact_info',
     description: 'Change the email, phones or address of an existing contact. Only pass the fields that change.',
     parameters: {
@@ -254,6 +255,7 @@ export const TOOLS = [
   {
     name: 'record_donation',
     kind: 'write',
+    autoSave: true,
     permission: 'finance.write',
     description: 'Record a donation that was received. Omit family_id only for an anonymous donor.',
     parameters: {
@@ -282,6 +284,7 @@ export const TOOLS = [
   {
     name: 'add_occasion',
     kind: 'write',
+    autoSave: true,
     permission: 'occasions.write',
     description: 'Add a Yahrzeit, birthday, anniversary or bar/bat mitzvah to a contact. Give either the civil date or the Hebrew date.',
     parameters: {

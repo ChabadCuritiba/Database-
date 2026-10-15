@@ -29,11 +29,10 @@ function systemPrompt(user, settings, lang) {
     'Use the tools to look things up and to make changes. Never invent contacts, ids, emails, dates or amounts.',
     'To act on an existing contact, search for it first; if a search returns several matches, ask which one. create_contact checks for duplicates itself.',
     'Spell emails exactly as the user said them; if an email or name spelling is unclear, ask.',
-    'To add a new contact (create_contact) or a person to an existing family (add_family_member), call the tool right away, in any language:',
-    'never ask the user for permission or confirmation first, and do not ask for details they did not give (a name is enough).',
-    'They are saved immediately; then just say it was added. Ask only when the tool itself reports a possible duplicate.',
-    'Other changes (donations, edits, Yahrzeits...) are not saved until the user confirms:',
-    'after calling one of those tools, tell the user exactly what will be done and ask them to confirm.',
+    'Every change (new contacts, family members, contact details, donations, Yahrzeits and other occasions) is saved as soon as you call its tool.',
+    'Call the tool right away, in any language: never ask the user for permission or confirmation first, and do not ask for details',
+    'they did not give when the tool does not need them (for a new contact a name is enough). Afterwards just say what was saved.',
+    'Ask only when something required is missing or unclear (which contact, the amount) or when a tool reports a possible duplicate.',
     'Never say a change was made unless a tool result says it was saved.',
     'If the user asks for something no tool can do, say so briefly.',
   ].join('\n');
@@ -125,11 +124,11 @@ export async function handleMessage(db, user, state, text, settings = {}, onStep
   }
 }
 
-// Requests to add someone ("add", "adiciona", "תוסיף"...). Used to catch a model that asks
-// permission instead of calling create_contact, which happens most often in English.
-const ADD_REQUEST = /\b(add|create|new|save|register|put)\b|adicion|acrescent|\bcri[ae]\b|cadastr|registr|\bsalv|\bnov[oa]\b|תוסיף|הוסף|להוסיף|תיצור|צור|תשמור|תרשום|חדש/i;
-const NUDGE = '[Nota do sistema] Do not ask for permission or confirmation to add a contact or a family member. If the user asked to add someone '
-  + 'and gave at least a name, call create_contact (new contact) or add_family_member (existing family) now with the details given. Otherwise answer the user normally.';
+// Requests to change something ("add", "adiciona", "תוסיף"...). Used to catch a model that asks
+// permission instead of calling the tool, which happens most often in English.
+const CHANGE_REQUEST = /\b(add|create|new|save|register|record|put|update|change|set|log|gave|donated|paid)\b|adicion|acrescent|\bcri[ae]\b|cadastr|registr|\bsalv|\bnov[oa]\b|atualiz|mud[ae]|troc[ae]|alter|\bdeu\b|doou|pagou|תוסיף|הוסף|להוסיף|תיצור|צור|תשמור|תרשום|חדש|תעדכן|עדכן|תשנה|שנה|תרם|נתן|שילם/i;
+const NUDGE = '[Nota do sistema] Do not ask for permission or confirmation: changes are saved as soon as you call the tool. '
+  + 'If the user asked for a change and gave what the tool needs, call the tool now with the details given. Otherwise answer the user normally.';
 
 async function converse(db, user, state, settings, onStep, text = '') {
   const tools = toolsFor(user);
@@ -143,7 +142,7 @@ async function converse(db, user, state, settings, onStep, text = '') {
     state.contents.push(content);
     const calls = content.parts.filter((p) => p.functionCall);
     if (!calls.length) {
-      if (round === 0 && !nudged && ADD_REQUEST.test(text) && textOf(content).includes('?') && tools.some((t) => t.autoSave)) {
+      if (round === 0 && !nudged && CHANGE_REQUEST.test(text) && textOf(content).includes('?') && tools.some((t) => t.autoSave)) {
         // It asked instead of saving: drop the question and tell it to save.
         nudged = true;
         state.contents.pop();
