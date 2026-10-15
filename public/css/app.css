@@ -161,3 +161,17 @@ details > summary { cursor: pointer; }
   body { background: #fff; }
   .card { border: 0; }
 }
+
+/* Phones: wide tables scroll sideways instead of stretching the page. */
+@media (max-width: 700px) {
+  html { font-size: 14px; }
+  .table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table th, .table td { white-space: nowrap; }
+  .topbar-inner { gap: 6px 10px; padding: 8px 16px; }
+  .mainnav a { padding: 4px 8px; }
+  .quicksearch { margin-left: 0; flex: 1 1 100%; }
+  .quicksearch input { width: 100%; }
+  .usermenu { width: 100%; justify-content: space-between; }
+  .card { padding: 12px; }
+  .dl { grid-template-columns: 90px 1fr; }
+}
