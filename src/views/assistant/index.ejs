@@ -10,7 +10,13 @@
       <label class="inline small" title="Escutar sempre e responder quando ouvir “Buggy”">
         <input type="checkbox" data-wake> “Hey Buggy”
       </label>
-      <label class="inline small"><input type="checkbox" data-speak checked> Falar respostas</label>
+      <label class="inline small">Voz:
+        <select data-speak aria-label="Quando o Buggy responde falando">
+          <option value="voice">quando eu falar</option>
+          <option value="always">sempre</option>
+          <option value="never">nunca</option>
+        </select>
+      </label>
       <select data-lang aria-label="Idioma" class="small">
         <option value="pt-BR">Português</option>
         <option value="en-US">English</option>

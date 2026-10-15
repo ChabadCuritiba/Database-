@@ -23,9 +23,10 @@
     set(k, v) { try { localStorage.setItem(`buggy.${k}`, v); } catch { /* ignore */ } },
   };
   langSel.value = store.get('lang', 'pt-BR');
-  speakBox.checked = store.get('speak', '1') === '1';
+  // Speak replies: 'voice' = only when the request was spoken (default), 'always', or 'never'.
+  speakBox.value = store.get('speakMode', store.get('speak', '1') === '0' ? 'never' : 'voice');
   langSel.addEventListener('change', () => { store.set('lang', langSel.value); restartListening(); });
-  speakBox.addEventListener('change', () => store.set('speak', speakBox.checked ? '1' : '0'));
+  speakBox.addEventListener('change', () => store.set('speakMode', speakBox.value));
 
   const setStatus = (t) => { if (status) status.textContent = t; };
   const scroll = () => { chat.scrollTop = chat.scrollHeight; };
@@ -57,8 +58,10 @@
   }
 
   // --- Speech out ---
-  function speak(text) {
-    if (!speakBox.checked || !('speechSynthesis' in window) || !text) return Promise.resolve();
+  function speak(text, viaVoice) {
+    const mode = speakBox.value;
+    if (mode === 'never' || (mode === 'voice' && !viaVoice)) return Promise.resolve();
+    if (!('speechSynthesis' in window) || !text) return Promise.resolve();
     return new Promise((resolve) => {
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
@@ -86,12 +89,12 @@
     if (!res.ok && !data.error) data.error = `Erro ${res.status}`;
     return data;
   }
-  async function handle(result) {
-    if (result.error) { bubble(result.error, 'buggy'); setStatus(''); return speak(result.error); }
+  async function handle(result, viaVoice) {
+    if (result.error) { bubble(result.error, 'buggy'); setStatus(''); return speak(result.error, viaVoice); }
     bubble(result.reply, 'buggy', result.links);
     showPending(result.pending);
-    setStatus(result.pending && result.pending.length ? 'Diga “sim” para salvar ou “não” para cancelar.' : '');
-    await speak(result.reply);
+    setStatus(result.pending && result.pending.length ? (viaVoice ? 'Diga “sim” para salvar ou “não” para cancelar.' : 'Toque em “Sim, salvar” ou “Cancelar”.') : '');
+    await speak(result.reply, viaVoice);
   }
   /** A "working" bubble that lists each step Buggy takes, ticking off finished ones. */
   function progressBubble() {
@@ -155,7 +158,7 @@
     return final || { error: 'A conexão caiu antes da resposta. Tente de novo.' };
   }
 
-  async function send(text) {
+  async function send(text, viaVoice = false) {
     text = (text || '').trim();
     if (!text || busy || !enabled) return;
     busy = true;
@@ -165,7 +168,7 @@
     try {
       const result = await streamMessage(text, progress);
       progress.remove();
-      await handle(result);
+      await handle(result, viaVoice);
     } catch {
       progress.remove();
       bubble('Sem conexão com o servidor.', 'buggy');
@@ -174,11 +177,11 @@
       busy = false;
     }
   }
-  async function decide(decision) {
+  async function decide(decision, viaVoice = false) {
     if (busy) return;
     busy = true;
     bubble(decision === 'yes' ? 'Sim' : 'Não', 'me');
-    try { await handle(await post('/assistant/confirm', { decision })); } finally { busy = false; }
+    try { await handle(await post('/assistant/confirm', { decision }), viaVoice); } finally { busy = false; }
   }
 
   $('[data-composer]').addEventListener('submit', (e) => {
@@ -256,10 +259,10 @@
 
   function routeSpeech(text) {
     if (!card.hidden) {
-      if (/^(sim|yes|confirm|pode|ok|isso|claro|salva)/i.test(text)) return decide('yes');
-      if (/^(n[aã]o|no|cancel|para|esquece)/i.test(text)) return decide('no');
+      if (/^(sim|yes|confirm|pode|ok|isso|claro|salva)/i.test(text)) return decide('yes', true);
+      if (/^(n[aã]o|no|cancel|para|esquece)/i.test(text)) return decide('no', true);
     }
-    send(text);
+    send(text, true);
   }
 
   function startWake() {
