@@ -79,6 +79,8 @@ A backup of the SQLite database is taken every night (`BACKUP_CRON`), keeping th
 
 ## Deployment notes
 
+**Step-by-step guide for a free Google Cloud VM: [deploy/GUIDE.md](deploy/GUIDE.md).**
+
 - Run behind HTTPS (e.g. Google Cloud Run, a VM with Caddy/Nginx). With `NODE_ENV=production` cookies are `Secure` and `SESSION_SECRET` is required.
 - The database is a single file (`DATABASE_PATH`); put it on a persistent disk.
 - Scheduled jobs (reminders, backups) run inside the app process. Run a single instance.
