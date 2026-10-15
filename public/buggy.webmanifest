@@ -2,6 +2,7 @@
   "name": "Buggy",
   "short_name": "Buggy",
   "description": "Assistente de voz do CRM",
+  "id": "/assistant",
   "start_url": "/assistant?listen=1",
   "scope": "/",
   "display": "standalone",

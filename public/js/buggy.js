@@ -271,6 +271,9 @@
     if (document.visibilityState === 'visible') { wakeLock = null; keepAwake(); resumeListening(); }
   });
 
+  // Lets Chrome offer "Install app", so the phone's assistant can open Buggy by name.
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
   scroll();
   if (!enabled) return;
   // Opened from a Siri / Google shortcut: start listening right away.

@@ -229,3 +229,17 @@ test('Gemini busy: retries, then falls back to the next model; a failed turn is 
     server.close();
   }
 });
+
+test('Buggy can be installed as an app: manifest and root service worker are served', async () => {
+  const { app } = setup();
+  const request = (await import('supertest')).default;
+  const sw = await request(app).get('/sw.js');
+  assert.equal(sw.status, 200);
+  assert.match(sw.headers['content-type'], /javascript/);
+  assert.match(sw.text, /addEventListener\('fetch'/);
+  const m = await request(app).get('/static/buggy.webmanifest');
+  const manifest = JSON.parse(m.text);
+  assert.equal(manifest.name, 'Buggy');
+  assert.equal(manifest.display, 'standalone');
+  assert.ok(manifest.icons.some((i) => i.sizes === '512x512'));
+});
