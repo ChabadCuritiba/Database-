@@ -147,12 +147,19 @@ export const TOOLS = [
         })).filter((m) => m.first_name),
       };
       if (v.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) fail(`"${v.email}" is not a valid email address; ask the user to spell it.`);
-      // Possible duplicates: same email, or a contact matching the family or first name.
+      // Only likely the same person counts as a duplicate: same email or mobile, or the
+      // same family name with the same first name. Anything else is saved without asking.
       const similar = new Map();
-      if (v.email) for (const f of findFamilies(db, { q: v.email }, { limit: 5 }).rows) similar.set(f.id, f);
-      for (const q of [v.family_name, v.first_name].filter(Boolean)) {
-        for (const f of findFamilies(db, { q }, { limit: 5 }).rows) similar.set(f.id, f);
+      const add = (rows) => rows.forEach((f) => similar.set(f.id, f));
+      if (v.email) add(db.prepare('SELECT * FROM families WHERE email = ? COLLATE NOCASE LIMIT 5').all(v.email));
+      const digits = String(v.mobile || '').replace(/\D/g, '');
+      if (digits.length >= 8) {
+        add(db.prepare("SELECT * FROM families WHERE mobile IS NOT NULL AND replace(replace(replace(replace(replace(mobile,' ',''),'-',''),'(',''),')',''),'+','') LIKE ? LIMIT 5")
+          .all(`%${digits.slice(-8)}`));
       }
+      add(db.prepare(`SELECT * FROM families f WHERE f.family_name = ? COLLATE NOCASE AND (? IS NULL
+          OR EXISTS (SELECT 1 FROM people p WHERE p.family_id = f.id AND p.first_name = ? COLLATE NOCASE)
+          OR NOT EXISTS (SELECT 1 FROM people p WHERE p.family_id = f.id)) LIMIT 5`).all(v.family_name, v.first_name, v.first_name));
       const out = { args: v, summary: T(lang).createContact(v) };
       if (similar.size && !a.confirmed_new) {
         out.warning = {

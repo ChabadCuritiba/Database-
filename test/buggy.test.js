@@ -20,8 +20,8 @@ function fakeGemini(script) {
 const say = (text) => ({ role: 'model', parts: [{ text }] });
 const callTool = (name, args) => ({ role: 'model', parts: [{ functionCall: { name, args }, thoughtSignature: 'sig-123' }] });
 
-async function chat(agent, text) {
-  const res = await agent.post('/assistant/message').set('x-csrf-token', agent.csrfToken).send({ text });
+async function chat(agent, text, lang) {
+  const res = await agent.post('/assistant/message').set('x-csrf-token', agent.csrfToken).send({ text, lang });
   return res;
 }
 
@@ -459,4 +459,21 @@ test('Buggy answers in the language chosen on the page', async () => {
   gemini.generate = async () => { throw Object.assign(new Error('busy'), { busy: true }); };
   res = await send('hello', 'en-US');
   assert.match(res.body.error, /Google's servers are busy/);
+});
+
+test('create_contact saves without asking in English and Hebrew, even with a shared last name', async () => {
+  const { db, app } = setup();
+  const cohen = createFamily(db, { family_name: 'Cohen', email: 'moshe@example.org' });
+  db.prepare("INSERT INTO people (family_id, relation, first_name) VALUES (?, 'primary', 'Moshe')").run(cohen);
+  fakeGemini([
+    callTool('create_contact', { family_name: 'Cohen', first_name: 'Sarah', email: 'sarah@example.org' }),
+    callTool('create_contact', { family_name: 'Levi', first_name: 'David' }),
+  ]);
+  const { agent } = await buggyAgent(app, 'staff');
+  let res = await chat(agent, 'Add Sarah Cohen, sarah@example.org', 'en-US');
+  assert.equal(res.body.pending.length, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name = 'Cohen'").get().n, 2);
+  res = await chat(agent, 'תוסיף את דוד לוי', 'he-IL');
+  assert.equal(res.body.pending.length, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name = 'Levi'").get().n, 1);
 });
