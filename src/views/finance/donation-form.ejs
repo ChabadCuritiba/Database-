@@ -8,8 +8,7 @@
         <input type="hidden" name="family_id" value="<%= family.id %>"><input value="<%= family.family_name %>" readonly>
       <% } else { %>
         <input type="hidden" name="family_id" data-family-id>
-        <input data-family-search placeholder="Type to search… (blank = anonymous)" autocomplete="off" list="family-results">
-        <datalist id="family-results"></datalist>
+        <input data-family-search data-empty-label="Anonymous donor" placeholder="Click or type a name… (blank = anonymous)" autocomplete="off">
       <% } %>
     </label>
     <label>Date<input type="date" name="date" value="<%= today %>" required></label>
@@ -23,7 +22,7 @@
     <div data-splits>
       <% for (let i = 0; i < 3; i++) { %>
       <div class="split-row">
-        <select name="splits[<%= i %>][fund_id]"><% for (const f of funds) { %><option value="<%= f.id %>"><%= f.name %></option><% } %></select>
+        <select name="splits[<%= i %>][fund_id]"><% for (const f of funds) { %><option value="<%= f.id %>" <%= ['Geral', 'General'].includes(f.name) ? 'selected' : '' %>><%= f.name %></option><% } %></select>
         <input name="splits[<%= i %>][amount]" placeholder="0,00" inputmode="decimal" <%= i === 0 ? 'required' : '' %>>
       </div>
       <% } %>

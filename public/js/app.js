@@ -122,29 +122,87 @@
     [day, month, year].forEach((el) => el.addEventListener('change', convert));
   });
 
-  // Family search with datalist; stores the chosen id in a hidden field.
+  // Single-contact picker (donor, event registration): dropdown of contacts that narrows as you type.
   $$('input[data-family-search]').forEach((input) => {
     const hidden = input.form.querySelector('[data-family-id]');
-    const list = document.getElementById(input.getAttribute('list'));
+    const wrap = document.createElement('div');
+    wrap.className = 'combo single';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const dropdown = document.createElement('div');
+    dropdown.className = 'dropdown';
+    dropdown.hidden = true;
+    wrap.appendChild(dropdown);
+    const emptyLabel = input.dataset.emptyLabel || '';
     let results = [];
+    let active = -1;
     let timer;
+    let seq = 0;
+
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+    const choose = (f) => {
+      input.value = f ? f.family_name : '';
+      if (hidden) hidden.value = f ? f.id : '';
+      input.classList.toggle('chosen', !!f);
+      close();
+    };
+    function close() { dropdown.hidden = true; active = -1; }
+    function render() {
+      dropdown.innerHTML = '';
+      if (emptyLabel && !input.value.trim()) {
+        const b = el('button', 'all-option', emptyLabel);
+        b.type = 'button';
+        b.addEventListener('click', () => choose(null));
+        dropdown.appendChild(b);
+      }
+      for (const f of results) {
+        const b = el('button');
+        b.type = 'button';
+        const left = el('span');
+        left.appendChild(el('strong', '', f.family_name));
+        if (f.salutation) left.appendChild(el('span', 'muted small', ` ${f.salutation}`));
+        b.appendChild(left);
+        b.appendChild(el('span', 'muted small', [f.email, f.city].filter(Boolean).join(' · ')));
+        b.addEventListener('click', () => choose(f));
+        dropdown.appendChild(b);
+      }
+      if (!dropdown.children.length) dropdown.appendChild(el('div', 'empty', 'No matching contacts'));
+      active = -1;
+      dropdown.hidden = false;
+    }
+    async function search() {
+      const mine = ++seq;
+      try {
+        const r = await fetch(`/api/families?q=${encodeURIComponent(input.value.trim())}`, { credentials: 'same-origin' });
+        const data = await r.json();
+        if (mine !== seq) return; // a newer search already answered
+        results = Array.isArray(data) ? data : [];
+        render();
+      } catch { /* ignore */ }
+    }
+    input.addEventListener('focus', () => { if (!(hidden && hidden.value)) search(); });
     input.addEventListener('input', () => {
-      const match = results.find((r) => label(r) === input.value);
-      if (hidden) hidden.value = match ? match.id : '';
+      if (hidden) hidden.value = ''; // typing again means a new choice
+      input.classList.remove('chosen');
       clearTimeout(timer);
-      if (match || input.value.length < 2) return;
-      timer = setTimeout(async () => {
-        const r = await fetch(`/api/families?q=${encodeURIComponent(input.value)}`, { credentials: 'same-origin' });
-        results = await r.json();
-        list.innerHTML = '';
-        for (const f of results) {
-          const opt = document.createElement('option');
-          opt.value = label(f);
-          list.appendChild(opt);
-        }
-      }, 200);
+      timer = setTimeout(search, 150);
     });
-    function label(f) { return `${f.family_name}${f.city ? ` (${f.city})` : ''} #${f.id}`; }
+    input.addEventListener('keydown', (e) => {
+      const btns = $$('button', dropdown);
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (dropdown.hidden) { search(); return; }
+        if (!btns.length) return;
+        active = (active + (e.key === 'ArrowDown' ? 1 : -1) + btns.length) % btns.length;
+        btns.forEach((b, i) => b.classList.toggle('active', i === active));
+        btns[active].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter' && !dropdown.hidden) {
+        e.preventDefault();
+        const target = btns[active] || btns.find((b) => !b.classList.contains('all-option'));
+        if (target) target.click();
+      } else if (e.key === 'Escape') close();
+    });
+    document.addEventListener('click', (e) => { if (e.target.isConnected && !wrap.contains(e.target)) close(); });
   });
 
   // Campaign recipients: type to get a dropdown of contacts, click to add; or "All contacts".

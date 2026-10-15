@@ -204,3 +204,9 @@ details > summary { cursor: pointer; }
 .hebrew-entry input, .hebrew-entry select { display: inline-block !important; width: auto !important; margin: 0 !important; }
 .hebrew-entry .w-md { width: 150px !important; }
 .next-preview { background: #eff8ff; border: 1px solid #b2ddff; color: #175cd3; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; }
+
+/* Single-contact picker */
+.combo.single { position: relative; margin-top: 3px; }
+.form .combo.single input { margin-top: 0 !important; }
+.combo.single input.chosen { background: #eaf0fa; border-color: var(--primary); color: var(--primary); font-weight: 600; }
+.combo.single .dropdown { left: 0; right: auto; min-width: 100%; width: max-content; max-width: min(520px, 90vw); }
