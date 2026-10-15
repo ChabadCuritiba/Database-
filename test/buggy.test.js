@@ -141,12 +141,15 @@ test('Buggy page explains setup when no Gemini key is configured', async () => {
   assert.equal(res.status, 503);
 });
 
-test('pickModel prefers the newest stable Gemini Flash model', () => {
+test('pickModel prefers the newest stable Gemini Flash model', async () => {
   assert.equal(pickModel(['models/gemini-2.5-flash', 'models/gemini-3-flash-preview', 'models/gemini-2.5-pro', 'models/gemini-3-flash', 'models/gemini-3-flash-lite']), 'gemini-3-flash');
   // Stable models come before previews, which are often overloaded.
   assert.equal(pickModel(['models/gemini-2.5-flash', 'models/gemini-3.6-flash-preview']), 'gemini-2.5-flash');
   assert.equal(pickModel(['models/gemini-3.6-flash-preview']), 'gemini-3.6-flash-preview');
   assert.equal(pickModel(['models/text-embedding-004']), null);
+  // Flash-Lite models are kept as backups, after the regular Flash models.
+  const { rankModels } = await import('../src/lib/buggy/gemini.js');
+  assert.deepEqual(rankModels(['models/gemini-3.8-flash-lite', 'models/gemini-3.8-flash', 'models/gemini-3-flash']), ['gemini-3.8-flash', 'gemini-3-flash', 'gemini-3.8-flash-lite']);
 });
 
 test('Gemini REST request has the expected shape', async () => {
@@ -207,7 +210,7 @@ test('Gemini busy: retries, then falls back to the next model; a failed turn is 
     const req = { system: 's', contents: [{ role: 'user', parts: [{ text: 'oi' }] }], tools: [] };
     const out = await mod.gemini.generate(req);
     assert.equal(out.parts[0].text, 'Oi!');
-    assert.equal(hits.filter((u) => u.includes('gemini-9-flash:')).length, 3, 'busy model tried 3 times');
+    assert.equal(hits.filter((u) => u.includes('gemini-9-flash:')).length, 1, 'a busy model is not retried while others are available');
     // The busy model is skipped on the next request.
     hits.length = 0;
     await mod.gemini.generate(req);
@@ -380,6 +383,43 @@ test('a retired Gemini model is skipped and the replacement Google suggests is u
     hits.length = 0;
     await mod.gemini.generate(req);
     assert.deepEqual(hits.filter((u) => u.includes(':generateContent')), ['/models/gemini-3.8-flash:generateContent'], 'retired model not tried again');
+  } finally {
+    Object.assign(config.gemini, saved);
+    server.close();
+  }
+});
+
+test('when every Flash model is busy, a Flash-Lite backup answers', async () => {
+  const hits = [];
+  const server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => {
+      hits.push(req.url);
+      res.setHeader('content-type', 'application/json');
+      if (req.url.startsWith('/models?')) {
+        return res.end(JSON.stringify({ models: ['gemini-3.8-flash', 'gemini-3-flash', 'gemini-3.8-flash-lite'].map((n) => ({ name: `models/${n}`, supportedGenerationMethods: ['generateContent'] })) }));
+      }
+      if (!req.url.includes('lite')) {
+        res.statusCode = 503;
+        return res.end(JSON.stringify({ error: { code: 503, message: 'This model is currently experiencing high demand.' } }));
+      }
+      res.end(JSON.stringify({ candidates: [{ content: { role: 'model', parts: [{ text: 'lite ok' }] } }] }));
+    });
+  });
+  await new Promise((r) => server.listen(0, r));
+  const saved = { ...config.gemini };
+  Object.assign(config.gemini, { apiKey: 'k', model: '', baseUrl: `http://127.0.0.1:${server.address().port}` });
+  try {
+    const mod = await import(`../src/lib/buggy/gemini.js?lite=${Date.now()}`);
+    mod.gemini.retryDelays = [1, 1];
+    const started = Date.now();
+    const out = await mod.gemini.generate({ system: 's', contents: [{ role: 'user', parts: [{ text: 'oi' }] }], tools: [] });
+    assert.equal(out.parts[0].text, 'lite ok');
+    assert.deepEqual(hits.filter((u) => u.includes(':generateContent')), [
+      '/models/gemini-3.8-flash:generateContent', '/models/gemini-3-flash:generateContent', '/models/gemini-3.8-flash-lite:generateContent',
+    ]);
+    assert.ok(Date.now() - started < 1000);
   } finally {
     Object.assign(config.gemini, saved);
     server.close();

@@ -4,9 +4,11 @@
 import { config } from '../../config.js';
 
 let cachedModels = null;
+let cachedAt = 0;
+const LIST_TTL_MS = 60 * 60 * 1000; // refresh the model list hourly
 // Models that recently answered "busy" are skipped for a while.
 const cooldown = new Map();
-const COOLDOWN_MS = 5 * 60 * 1000;
+const COOLDOWN_MS = 2 * 60 * 1000; // busy spikes are usually short
 // Models that rejected our thinking setting; they get requests without it.
 const noThinkingConfig = new Set();
 // Models Google has retired or closed to this account, and replacements it suggested.
@@ -38,28 +40,32 @@ async function call(path, { method = 'GET', body, timeoutMs = 15000 } = {}) {
   return data;
 }
 
-/** Ranks model ids like "gemini-3.6-flash": stable models newest first, then previews (they are often overloaded). */
+/**
+ * Ranks model ids like "gemini-3.8-flash": stable before preview (previews are
+ * often overloaded), newest first; "flash-lite" models come last as backups.
+ */
 export function rankModels(names) {
   return names
     .map((n) => n.replace(/^models\//, ''))
-    .filter((n) => /^gemini-[\d.]+-flash/.test(n) && !/lite|image|tts|audio|live|embedding|thinking-exp/.test(n))
+    .filter((n) => /^gemini-[\d.]+-flash/.test(n) && !/image|tts|audio|live|embedding|thinking-exp/.test(n))
     .map((n) => ({
       n,
+      lite: /lite/.test(n) ? 1 : 0,
       version: Number(n.match(/^gemini-([\d.]+)-/)[1].split('.').slice(0, 2).join('.')),
       preview: /preview|exp/.test(n) ? 1 : 0,
       dated: /-\d{2,}$|-\d{4}$/.test(n) ? 1 : 0,
     }))
-    .sort((a, b) => a.preview - b.preview || b.version - a.version || a.dated - b.dated || a.n.length - b.n.length)
+    .sort((a, b) => a.lite - b.lite || a.preview - b.preview || b.version - a.version || a.dated - b.dated || a.n.length - b.n.length)
     .map((c) => c.n);
 }
 
 export function pickModel(names) {
-  return rankModels(names)[0] || null;
+  return rankModels(names).find((n) => !/lite/.test(n)) || rankModels(names)[0] || null;
 }
 
 /** Models to try in order: the configured one (if any), then the best available Flash models. */
 export async function modelChain() {
-  if (!cachedModels) {
+  if (!cachedModels || Date.now() - cachedAt > LIST_TTL_MS) {
     try {
       const names = [];
       let pageToken = '';
@@ -70,11 +76,14 @@ export async function modelChain() {
         }
         pageToken = data.nextPageToken || '';
       } while (pageToken);
-      cachedModels = rankModels(names).slice(0, 3);
+      const ranked = rankModels(names);
+      // Up to 4 Flash models, then 2 Flash-Lite backups.
+      cachedModels = [...ranked.filter((n) => !/lite/.test(n)).slice(0, 4), ...ranked.filter((n) => /lite/.test(n)).slice(0, 2)];
+      cachedAt = Date.now();
     } catch {
-      cachedModels = [];
+      cachedModels = cachedModels || [];
     }
-    if (!cachedModels.length) cachedModels = ['gemini-flash-latest'];
+    if (!cachedModels.length) cachedModels = ['gemini-flash-latest', 'gemini-flash-lite-latest'];
   }
   const chain = [...new Set([config.gemini.model, ...suggested, ...cachedModels].filter((m) => m && !retired.has(m)))];
   const now = Date.now();
@@ -99,7 +108,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const gemini = {
   enabled: () => !!config.gemini.apiKey,
   retryDelays: [800, 2000],
-  requestTimeoutMs: 20000, // one Gemini call
+  requestTimeoutMs: 12000, // one Gemini call
   totalBudgetMs: 45000, // everything for one reply, across retries and models
   /**
    * Returns the model's content object: { role: 'model', parts: [...] }.
@@ -151,7 +160,8 @@ export const gemini = {
             break;
           }
           if (!isBusy(e)) throw e;
-          if (isTimeout(e)) break; // a model that does not answer gets no second wait
+          // Busy or silent: go straight to the next model. Only the last one is retried.
+          if (isTimeout(e) || i < chain.length - 1) break;
           if (attempt < this.retryDelays.length) await sleep(this.retryDelays[attempt]);
         }
       }
