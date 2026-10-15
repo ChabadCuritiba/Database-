@@ -49,24 +49,25 @@ function note(state, userNote, reply) {
   state.contents.push({ role: 'model', parts: [{ text: reply }] });
 }
 
-/** Short, human description of what a tool call is doing (shown while Buggy works). */
-export function describeCall(name, args = {}) {
-  switch (name) {
-    case 'search_contacts': return `Procurando "${args.query || ''}" nos contatos`;
-    case 'get_contact': return 'Abrindo a ficha do contato';
-    case 'upcoming_occasions': return 'Verificando as próximas datas';
-    case 'list_funds': return 'Consultando os fundos';
-    case 'create_contact': return `Preparando: novo contato "${args.family_name || ''}"`;
-    case 'add_family_member': return `Preparando: adicionar ${args.first_name || 'pessoa'} à família`;
-    case 'update_contact_info': return 'Preparando: atualizar dados do contato';
-    case 'record_donation': return 'Preparando: registrar doação';
-    case 'add_occasion': return `Preparando: adicionar ${args.name || 'data'}`;
-    default: return 'Trabalhando';
-  }
-}
+/**
+ * Progress step codes shown while Buggy works; the page translates them
+ * (thinking, searching, creating...). Keep them short and non-technical.
+ */
+const STEP_FOR_TOOL = {
+  search_contacts: 'searching',
+  get_contact: 'reading',
+  upcoming_occasions: 'checking_dates',
+  list_funds: 'checking_funds',
+  create_contact: 'creating_contact',
+  add_family_member: 'adding_person',
+  update_contact_info: 'updating',
+  record_donation: 'recording_donation',
+  add_occasion: 'adding_date',
+};
+export const stepFor = (toolName) => STEP_FOR_TOOL[toolName] || 'working';
 
 export async function confirmPending(db, user, state, onStep = () => {}) {
-  onStep('Salvando');
+  onStep('saving');
   const done = [];
   const failed = [];
   for (const p of state.pending) {
@@ -122,8 +123,8 @@ async function converse(db, user, state, settings, onStep) {
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     trim(state.contents);
-    onStep(round === 0 ? 'Entendendo o pedido' : 'Analisando os resultados');
-    const content = await gemini.generate({ system: systemPrompt(user, settings), contents: state.contents, tools: decls, onStep });
+    onStep('thinking');
+    const content = await gemini.generate({ system: systemPrompt(user, settings), contents: state.contents, tools: decls });
     state.contents.push(content);
     const calls = content.parts.filter((p) => p.functionCall);
     if (!calls.length) {
@@ -132,7 +133,7 @@ async function converse(db, user, state, settings, onStep) {
     let proposed = 0;
     let needsModel = false;
     const responses = calls.map(({ functionCall: fc }) => {
-      onStep(describeCall(fc.name, fc.args));
+      onStep(stepFor(fc.name));
       const { tool, error } = findTool(user, fc.name);
       let response;
       if (error) response = { error };

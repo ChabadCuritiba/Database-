@@ -73,7 +73,6 @@ router.post('/message', async (req, res) => {
   if (rateLimited(req.user.id)) return out.fail(429, 'Muitas mensagens seguidas. Espere um minuto.');
   const db = req.app.get('db');
   try {
-    out.step('Conectando ao Google Gemini');
     out.done(await handleMessage(db, req.user, state(req), req.body?.text, getSettings(db), out.step));
   } catch (e) {
     console.error('[buggy]', e);

@@ -344,10 +344,7 @@ test('progress steps are streamed while Buggy works, then the result', async () 
     });
   assert.match(res.headers['content-type'], /ndjson/);
   const lines = res.body.trim().split('\n').map((l) => JSON.parse(l));
-  assert.deepEqual(lines.filter((l) => l.step).map((l) => l.step), [
-    'Conectando ao Google Gemini', 'Entendendo o pedido', 'Procurando "Cohen" nos contatos',
-    'Analisando os resultados', 'Preparando: novo contato "Novo"',
-  ]);
+  assert.deepEqual(lines.filter((l) => l.step).map((l) => l.step), ['thinking', 'searching', 'thinking', 'creating_contact']);
   assert.equal(lines.at(-1).result.pending.length, 1);
   // The pending change survived the streamed response (session saved).
   const yes = await chat(agent, 'sim');

@@ -96,7 +96,15 @@
     setStatus(result.pending && result.pending.length ? (viaVoice ? 'Diga “sim” para salvar ou “não” para cancelar.' : 'Toque em “Sim, salvar” ou “Cancelar”.') : '');
     await speak(result.reply, viaVoice);
   }
-  /** A "working" bubble that lists each step Buggy takes, ticking off finished ones. */
+  // Progress steps, in the language chosen on the page.
+  const STEPS = {
+    'pt-BR': { thinking: 'Pensando', searching: 'Procurando', reading: 'Lendo a ficha', checking_dates: 'Verificando datas', checking_funds: 'Verificando fundos', creating_contact: 'Criando contato', adding_person: 'Adicionando pessoa', updating: 'Atualizando', recording_donation: 'Registrando doação', adding_date: 'Adicionando data', saving: 'Salvando', working: 'Trabalhando' },
+    'en-US': { thinking: 'Thinking', searching: 'Searching', reading: 'Reading the contact', checking_dates: 'Checking dates', checking_funds: 'Checking funds', creating_contact: 'Creating contact', adding_person: 'Adding person', updating: 'Updating', recording_donation: 'Recording donation', adding_date: 'Adding date', saving: 'Saving', working: 'Working' },
+    'he-IL': { thinking: 'חושב', searching: 'מחפש', reading: 'קורא את הכרטיס', checking_dates: 'בודק תאריכים', checking_funds: 'בודק קרנות', creating_contact: 'יוצר איש קשר', adding_person: 'מוסיף אדם', updating: 'מעדכן', recording_donation: 'רושם תרומה', adding_date: 'מוסיף תאריך', saving: 'שומר', working: 'עובד' },
+  };
+  const stepLabel = (code) => (STEPS[langSel.value] || STEPS['pt-BR'])[code] || (STEPS['pt-BR'][code] ? STEPS['pt-BR'][code] : code);
+
+  /** A "working" bubble listing Buggy's steps, ticking off finished ones. */
   function progressBubble() {
     const div = document.createElement('div');
     div.className = 'bubble buggy-msg progress';
@@ -104,23 +112,19 @@
     div.appendChild(list);
     chat.appendChild(div);
     scroll();
-    let started = Date.now();
-    const timer = setInterval(() => {
-      const cur = list.lastElementChild;
-      if (cur) cur.dataset.secs = `${Math.round((Date.now() - started) / 1000)}s`;
-    }, 1000);
     return {
-      step(text) {
+      step(code) {
+        const text = stepLabel(code);
+        if ([...list.children].some((li) => li.textContent === text)) return; // each step shown once
         const prev = list.lastElementChild;
-        if (prev) { prev.classList.add('done'); delete prev.dataset.secs; }
+        if (prev) prev.classList.add('done');
         const li = document.createElement('li');
         li.textContent = text;
         list.appendChild(li);
-        started = Date.now();
         setStatus(`${text}…`);
         scroll();
       },
-      remove() { clearInterval(timer); div.remove(); },
+      remove() { div.remove(); },
     };
   }
 
@@ -164,7 +168,7 @@
     busy = true;
     bubble(text, 'me');
     const progress = progressBubble();
-    progress.step('Enviando');
+    progress.step('thinking');
     try {
       const result = await streamMessage(text, progress);
       progress.remove();
