@@ -15,6 +15,7 @@ const router = express.Router();
 router.use(requirePermission('comms.send'));
 
 const CHANNELS = ['email', 'sms', 'call'];
+const AUDIENCES = ['all', 'pick', 'filter'];
 const REQUIRE_FOR = { email: 'email', sms: 'mobile', call: 'mobile', print: 'address' };
 
 export function mergeFields(family, settings) {
@@ -27,6 +28,30 @@ export function mergeFields(family, settings) {
     address: formatAddress(family).join(', '),
     org_name: settings.org_name,
   };
+}
+
+/**
+ * Recipient criteria from a compose form:
+ *   all    every contact reachable on the channel
+ *   pick   only the contacts ticked in the list
+ *   filter the category / priority / ... filters
+ */
+export function audienceCriteria(body, channel) {
+  const audience = oneOf(body.audience, AUDIENCES, 'filter');
+  const c = normalizeCriteria(body);
+  let criteria;
+  if (audience === 'all') criteria = normalizeCriteria({});
+  else if (audience === 'pick') criteria = { ...normalizeCriteria({}), familyIds: c.familyIds.length ? c.familyIds : [-1] };
+  else criteria = { ...c, familyIds: [] };
+  return { audience, criteria: { ...criteria, require: REQUIRE_FOR[channel] } };
+}
+
+/** Contacts that can be picked individually for a channel. */
+function pickable(db, channel) {
+  const col = channel === 'email' ? 'email' : 'mobile';
+  const optOut = channel === 'email' ? 'no_email' : 'no_sms';
+  return db.prepare(`SELECT id, family_name, salutation, ${col} contact FROM families
+    WHERE COALESCE(${col},'') <> '' AND ${optOut} = 0 ORDER BY family_name COLLATE NOCASE`).all();
 }
 
 function lookups(db) {
@@ -45,18 +70,21 @@ router.get('/compose', (req, res) => {
   const db = req.app.get('db');
   const channel = oneOf(req.query.channel, CHANNELS, 'email');
   const criteria = normalizeCriteria(req.query);
-  const { total } = findFamilies(db, { ...criteria, require: REQUIRE_FOR[channel] });
-  res.render('comms/compose', { title: 'New campaign', channel, criteria, total, ...lookups(db) });
+  const contacts = pickable(db, channel);
+  res.render('comms/compose', {
+    title: 'New campaign', channel, criteria, contacts,
+    audience: oneOf(req.query.audience, AUDIENCES, 'all'), ...lookups(db),
+  });
 });
 
 router.post('/preview', (req, res) => {
   const db = req.app.get('db');
   const channel = oneOf(req.body.channel, CHANNELS, 'email');
-  const criteria = { ...normalizeCriteria(req.body), require: REQUIRE_FOR[channel] };
+  const { audience, criteria } = audienceCriteria(req.body, channel);
   const { rows, total } = findFamilies(db, criteria, { limit: 200 });
   const settings = getSettings(db);
   const sample = rows[0] ? merge(req.body.body, mergeFields(rows[0], settings)) : '';
-  res.render('comms/preview', { title: 'Review campaign', channel, rows, total, body: req.body, criteria, sample });
+  res.render('comms/preview', { title: 'Review campaign', channel, rows, total, body: req.body, criteria, audience, sample });
 });
 
 router.post('/send', async (req, res) => {
@@ -66,7 +94,7 @@ router.post('/send', async (req, res) => {
   const subject = str(req.body.subject);
   if (!body) throw httpError(400, 'Message body is required');
   if (channel === 'email' && !subject) throw httpError(400, 'Subject is required');
-  const criteria = { ...normalizeCriteria(req.body), require: REQUIRE_FOR[channel] };
+  const { criteria } = audienceCriteria(req.body, channel);
   const { rows } = findFamilies(db, criteria);
   const settings = getSettings(db);
   const { lastInsertRowid: campaignId } = db.prepare('INSERT INTO campaigns (channel, subject, body, criteria, created_by) VALUES (?, ?, ?, ?, ?)').run(

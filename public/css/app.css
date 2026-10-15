@@ -175,3 +175,14 @@ details > summary { cursor: pointer; }
   .card { padding: 12px; }
   .dl { grid-template-columns: 90px 1fr; }
 }
+
+/* Recipient chooser */
+.audience-options { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-bottom: 10px; }
+.picker-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.picker-bar input[type=search] { flex: 1 1 220px; width: auto !important; display: inline-block !important; margin: 0 !important; }
+.picker { max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; }
+.pick-row { display: grid !important; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; margin: 0 !important; border-bottom: 1px solid var(--line); color: var(--text) !important; cursor: pointer; }
+.pick-row:last-child { border-bottom: 0; }
+.pick-row:hover { background: #f5f8fc; }
+.pick-row[hidden] { display: none !important; }
+@media (max-width: 700px) { .pick-row { grid-template-columns: auto 1fr; } .pick-contact { grid-column: 2; } }

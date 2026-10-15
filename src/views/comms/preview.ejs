@@ -3,13 +3,14 @@
 <form method="post" action="/comms/send" class="card" data-confirm="Send to <%= total %> recipients now?">
   <%- include('../partials/csrf') %>
   <input type="hidden" name="channel" value="<%= channel %>">
+  <input type="hidden" name="audience" value="<%= audience %>">
   <% for (const [k, v] of Object.entries(criteria)) { if (k === 'require') continue; for (const val of [].concat(v)) { if (val === '' || val === null) continue; %>
     <input type="hidden" name="<%= k %>" value="<%= val %>">
   <% } } %>
   <input type="hidden" name="subject" value="<%= body.subject || '' %>">
   <input type="hidden" name="audio_url" value="<%= body.audio_url || '' %>">
   <textarea name="body" hidden><%= body.body %></textarea>
-  <p><strong><%= total %></strong> recipients.</p>
+  <p><strong><%= total %></strong> recipients<%= audience === 'all' ? ' (all contacts)' : audience === 'pick' ? ' (chosen contacts)' : '' %>.</p>
   <% if (body.subject) { %><p><strong>Subject:</strong> <%= body.subject %></p><% } %>
   <h3>Sample (first recipient)</h3>
   <pre class="sample"><%= sample %></pre>

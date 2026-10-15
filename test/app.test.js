@@ -307,3 +307,38 @@ test('admin can invite users and cannot demote themselves', async () => {
   const bk = await agent.postForm('/admin/backups');
   assert.equal(bk.status, 302);
 });
+
+test('campaign recipients: all contacts, chosen contacts, or filters', async () => {
+  const { db, app } = setup();
+  const a = createFamily(db, { family_name: 'Aaron', email: 'a@example.org' });
+  const b = createFamily(db, { family_name: 'Baruch', email: 'b@example.org' });
+  createFamily(db, { family_name: 'NoMail', email: 'n@example.org', no_email: 1 });
+  const agent = await login(app, 'staff');
+
+  const page = await agent.get('/comms/compose?channel=email');
+  assert.match(page.text, /All contacts/);
+  assert.match(page.text, /Aaron/);
+  assert.doesNotMatch(page.text, /NoMail/);
+
+  outbox.length = 0;
+  await agent.postForm('/comms/send', { channel: 'email', audience: 'all', q: 'Aaron', subject: 'S', body: 'B' });
+  assert.deepEqual(outbox.map((m) => m.to).sort(), ['a@example.org', 'b@example.org']);
+
+  outbox.length = 0;
+  await agent.postForm('/comms/send', { channel: 'email', audience: 'pick', familyIds: [String(b)], subject: 'S', body: 'B' });
+  assert.deepEqual(outbox.map((m) => m.to), ['b@example.org']);
+
+  outbox.length = 0;
+  await agent.postForm('/comms/send', { channel: 'email', audience: 'pick', subject: 'S', body: 'B' });
+  assert.equal(outbox.length, 0, 'picking nobody sends nothing');
+
+  outbox.length = 0;
+  await agent.postForm('/comms/send', { channel: 'email', audience: 'filter', q: 'Aaron', familyIds: [String(b)], subject: 'S', body: 'B' });
+  assert.deepEqual(outbox.map((m) => m.to), ['a@example.org']);
+
+  // Many chosen contacts survive form parsing.
+  const ids = [a, b];
+  for (let i = 0; i < 40; i++) ids.push(createFamily(db, { family_name: `F${i}`, email: `f${i}@example.org` }));
+  const preview = await agent.postForm('/comms/preview', { channel: 'email', audience: 'pick', familyIds: ids.map(String), subject: 'S', body: 'B' });
+  assert.match(preview.text, /<strong>42<\/strong> recipients/);
+});

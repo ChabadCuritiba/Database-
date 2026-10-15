@@ -1,16 +1,52 @@
 <%- include('../partials/header') %>
+<% const contactLabel = channel === 'email' ? 'email' : 'mobile number'; %>
 <h1>New <%= { email: 'email campaign', sms: 'SMS campaign', call: 'robo-call' }[channel] %></h1>
-<form method="post" action="/comms/preview" class="card form">
+<form method="post" action="/comms/preview" class="card form" data-audience-form>
   <%- include('../partials/csrf') %>
   <input type="hidden" name="channel" value="<%= channel %>">
-  <%- include('../partials/criteria', { criteria, categories, affiliations, sources, cities }) %>
+
+  <fieldset>
+    <legend>Send to</legend>
+    <div class="audience-options">
+      <label class="inline"><input type="radio" name="audience" value="all" <%= audience === 'all' ? 'checked' : '' %>>
+        <strong>All contacts</strong>&nbsp;<span class="muted">(<%= contacts.length %> with an <%= contactLabel %>)</span></label>
+      <label class="inline"><input type="radio" name="audience" value="pick" <%= audience === 'pick' ? 'checked' : '' %>>
+        <strong>Choose contacts</strong></label>
+      <label class="inline"><input type="radio" name="audience" value="filter" <%= audience === 'filter' ? 'checked' : '' %>>
+        <strong>By category / filter</strong></label>
+    </div>
+
+    <div data-audience-panel="pick">
+      <div class="picker-bar">
+        <input type="search" placeholder="Type to find a contact…" data-pick-search aria-label="Find a contact">
+        <button type="button" class="btn btn-small btn-light" data-pick-all>Select all</button>
+        <button type="button" class="btn btn-small btn-light" data-pick-none>Clear</button>
+        <span class="small muted"><strong data-pick-count>0</strong> selected</span>
+      </div>
+      <div class="picker" data-picker>
+        <% for (const c of contacts) { %>
+          <label class="pick-row" data-pick-text="<%= `${c.family_name} ${c.salutation || ''} ${c.contact}`.toLowerCase() %>">
+            <input type="checkbox" name="familyIds" value="<%= c.id %>" <%= criteria.familyIds.includes(c.id) ? 'checked' : '' %>>
+            <span><strong><%= c.family_name %></strong> <span class="muted small"><%= c.salutation || '' %></span></span>
+            <span class="small muted pick-contact"><%= c.contact %></span>
+          </label>
+        <% } %>
+        <% if (!contacts.length) { %><p class="muted">No contacts have an <%= contactLabel %> yet.</p><% } %>
+      </div>
+    </div>
+
+    <div data-audience-panel="filter">
+      <%- include('../partials/criteria', { criteria, categories, affiliations, sources, cities }) %>
+    </div>
+  </fieldset>
+
   <% if (channel === 'email') { %><label>Subject *<input name="subject" required></label><% } %>
   <% if (channel === 'call') { %><label>Recorded audio URL (optional — otherwise the text is read aloud)<input name="audio_url" type="url" placeholder="https://…/message.mp3"></label><% } %>
   <label><%= channel === 'call' ? 'Text to speak' : 'Message' %> *
     <textarea name="body" rows="<%= channel === 'email' ? 12 : 4 %>" required <%= channel === 'sms' ? 'maxlength=600' : '' %>></textarea>
   </label>
   <p class="small muted">Merge fields: {{salutation}}, {{family_name}}, {{hebrew_name}}, {{city}}, {{address}}, {{org_name}}.
-    Contacts who opted out or have no <%= channel === 'email' ? 'email' : 'mobile number' %> are excluded automatically.</p>
+    Contacts who opted out or have no <%= contactLabel %> are excluded automatically.</p>
   <button class="btn">Preview recipients</button>
 </form>
 <%- include('../partials/footer') %>

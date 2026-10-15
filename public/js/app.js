@@ -95,6 +95,45 @@
     function label(f) { return `${f.family_name}${f.city ? ` (${f.city})` : ''} #${f.id}`; }
   });
 
+  // Campaign recipients: show the panel for the chosen audience; searchable contact picker.
+  $$('[data-audience-form]').forEach((form) => {
+    const panels = $$('[data-audience-panel]', form);
+    const sync = () => {
+      const chosen = (form.querySelector('input[name=audience]:checked') || {}).value;
+      panels.forEach((p) => {
+        const on = p.dataset.audiencePanel === chosen;
+        p.hidden = !on;
+        // Hidden panels must not submit their fields.
+        $$('input, select', p).forEach((el) => { el.disabled = !on; });
+      });
+    };
+    $$('input[name=audience]', form).forEach((r) => r.addEventListener('change', sync));
+    sync();
+
+    const rows = $$('.pick-row', form);
+    const count = form.querySelector('[data-pick-count]');
+    const search = form.querySelector('[data-pick-search]');
+    const updateCount = () => { if (count) count.textContent = rows.filter((r) => r.querySelector('input').checked).length; };
+    const visible = () => rows.filter((r) => !r.hidden);
+    if (search) search.addEventListener('input', () => {
+      const q = search.value.trim().toLowerCase();
+      rows.forEach((r) => { r.hidden = q && !r.dataset.pickText.includes(q); });
+    });
+    const all = form.querySelector('[data-pick-all]');
+    const none = form.querySelector('[data-pick-none]');
+    if (all) all.addEventListener('click', () => { visible().forEach((r) => { r.querySelector('input').checked = true; }); updateCount(); });
+    if (none) none.addEventListener('click', () => { rows.forEach((r) => { r.querySelector('input').checked = false; }); updateCount(); });
+    form.addEventListener('change', updateCount);
+    form.addEventListener('submit', (e) => {
+      const chosen = (form.querySelector('input[name=audience]:checked') || {}).value;
+      if (chosen === 'pick' && rows.length && !rows.some((r) => r.querySelector('input').checked)) {
+        e.preventDefault();
+        window.alert('Please choose at least one contact.');
+      }
+    });
+    updateCount();
+  });
+
   // Money parsing for live totals (accepts 1.234,56 and 1,234.56).
   function parseMoney(s) {
     s = String(s || '').replace(/[^\d.,-]/g, '');

@@ -10,6 +10,7 @@
 //   require,        'email' | 'mobile' | 'address' -- also honours opt-outs
 //   donatedSince,   YYYY-MM-DD  only families with a donation on/after
 //   notDonatedSince YYYY-MM-DD  only families without a donation on/after
+//   familyIds,      array of family ids  only these families
 // }
 
 const descendantsSql = `
@@ -33,6 +34,8 @@ export function normalizeCriteria(input = {}) {
     require: ['email', 'mobile', 'address'].includes(input.require) ? input.require : '',
     donatedSince: input.donatedSince || '',
     notDonatedSince: input.notDonatedSince || '',
+    // Integers only; -1 is kept as a "match nobody" marker.
+    familyIds: arr(input.familyIds).map(Number).filter(Number.isInteger),
   };
 }
 
@@ -76,6 +79,11 @@ export function buildFamilyQuery(db, rawCriteria, { orderBy = 'f.family_name COL
   if (c.notDonatedSince) {
     where.push("NOT EXISTS (SELECT 1 FROM payments p WHERE p.family_id = f.id AND p.kind = 'donation' AND p.date >= ?)");
     params.push(c.notDonatedSince);
+  }
+
+  if (c.familyIds.length) {
+    where.push(`f.id IN (${c.familyIds.map(() => '?').join(',')})`);
+    params.push(...c.familyIds);
   }
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
