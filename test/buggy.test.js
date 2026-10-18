@@ -40,7 +40,7 @@ test('Dot creates a contact with a family member right away, without asking', as
   ]);
   const { agent, page } = await buggyAgent(app, 'staff');
   assert.match(page.text, /Dot/);
-  assert.match(page.text, /buggy\.webmanifest/);
+  assert.match(page.text, /dot\.webmanifest/);
 
   const res = await chat(agent, 'Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com');
   assert.equal(res.status, 200);
@@ -231,7 +231,7 @@ test('Dot can be installed as an app: manifest and root service worker are serve
   assert.equal(sw.status, 200);
   assert.match(sw.headers['content-type'], /javascript/);
   assert.match(sw.text, /addEventListener\('fetch'/);
-  const m = await request(app).get('/static/buggy.webmanifest');
+  const m = await request(app).get('/static/dot.webmanifest');
   const manifest = JSON.parse(m.text);
   assert.equal(manifest.name, 'Dot');
   assert.equal(manifest.display, 'standalone');

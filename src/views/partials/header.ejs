@@ -6,12 +6,12 @@
   <title><%= title ? title + ' · ' : '' %><%= settings.org_name %></title>
   <link rel="stylesheet" href="/static/css/app.css?v=<%= assetVersion %>">
   <% if (typeof manifest !== 'undefined' && manifest) { %>
-  <link rel="manifest" href="/static/buggy.webmanifest">
+  <link rel="manifest" href="/static/dot.webmanifest?v=<%= assetVersion %>">
   <meta name="theme-color" content="#1f4e8c">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Dot">
-  <link rel="apple-touch-icon" href="/static/icons/buggy-192.png">
+  <link rel="apple-touch-icon" href="/static/icons/dot-192.png">
   <% } %>
   <script src="/static/js/app.js?v=<%= assetVersion %>" defer></script>
 </head>

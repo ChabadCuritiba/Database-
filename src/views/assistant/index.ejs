@@ -1,7 +1,7 @@
 <%- include('../partials/header') %>
 <div class="buggy" data-buggy data-csrf="<%= csrfToken %>" data-enabled="<%= enabled ? '1' : '' %>">
   <div class="buggy-head">
-    <img src="/static/icons/buggy.svg" alt="" class="buggy-logo" width="44" height="44">
+    <img src="/static/icons/dot.svg" alt="" class="buggy-logo" width="44" height="44">
     <div>
       <h1>Dot</h1>
       <p class="muted small" data-status><%= enabled ? 'Toque no microfone e fale, ou escreva abaixo.' : '' %></p>
@@ -75,7 +75,7 @@
         <h3>Android — “Ok Google, abrir Dot”</h3>
         <ol class="small">
           <li>Nesta página, no Chrome, toque em <strong>⋮</strong> → <strong>Instalar app</strong>. (Se aparecer “Adicionar à tela inicial”, escolha <strong>Instalar</strong>, não “Criar atalho”.)</li>
-          <li>O Dot aparece entre os seus apps, com o ícone da joaninha.</li>
+          <li>O Dot aparece entre os seus apps, com o ícone do robô.</li>
           <li>Diga <strong>“Ok Google, abrir Dot”</strong>. Ele já abre escutando.</li>
           <li>Se o Gemini disser que não consegue abrir, o Dot ainda não está instalado como app: repita o passo 1. Tocar no ícone também funciona.</li>
         </ol>
