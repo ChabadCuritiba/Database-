@@ -1,4 +1,4 @@
-// Buggy, the voice assistant page and its JSON endpoints.
+// Dot, the voice assistant page and its JSON endpoints.
 import express from 'express';
 import { gemini } from '../lib/buggy/gemini.js';
 import { handleMessage, confirmPending, cancelPending, newState } from '../lib/buggy/agent.js';
@@ -37,7 +37,7 @@ function transcript(s) {
 router.get('/', (req, res) => {
   const s = state(req);
   res.render('assistant/index', {
-    title: 'Buggy',
+    title: 'Dot',
     enabled: gemini.enabled(),
     history: transcript(s),
     pending: s.pending.map((p) => ({ summary: p.summary })),
@@ -46,7 +46,7 @@ router.get('/', (req, res) => {
 });
 
 /**
- * Clients sending `Accept: application/x-ndjson` get progress lines while Buggy
+ * Clients sending `Accept: application/x-ndjson` get progress lines while Dot
  * works ({"step": "..."}) and then {"result": {...}} or {"error": "..."}.
  * Other clients get one JSON answer.
  */

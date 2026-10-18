@@ -88,16 +88,16 @@ Edit `/opt/crm/.env` as in step 4.3 and restart. Until you do, messages are only
 - **SMS & robo-calls:** Twilio account SID, auth token and phone number.
 - **Online payments:** Stripe secret key and webhook secret (see README).
 
-## Optional: Buggy, the voice assistant
+## Optional: Dot, the voice assistant
 
 1. Go to **aistudio.google.com** → **Get API key** → **Create API key** and pick your Google Cloud / Firebase project. Use a project with billing enabled (e.g. Blaze), so Google does not use your data to improve its products.
 2. Add the key to `/opt/crm/.env`:
    ```
    GEMINI_API_KEY=your-key
    ```
-3. Restart: `sudo systemctl restart crm`. Open **🎙 Buggy** in the menu.
+3. Restart: `sudo systemctl restart crm`. Open **🎙 Dot** in the menu.
 
-Buggy picks the best available Gemini "Flash" model automatically and switches by itself when Google retires one, so don't set `GEMINI_MODEL` unless you have a specific reason. Buggy saves every change right away (contacts, family members, donations, Yahrzeits); it asks first only if it looks like a duplicate. Every change is in Admin → Audit log. To open it by voice, see "Abrir o Buggy pela voz no celular" on the Buggy page (Siri Shortcut on iPhone, "Ok Google, abrir Buggy" on Android).
+Dot picks the best available Gemini "Flash" model automatically and switches by itself when Google retires one, so don't set `GEMINI_MODEL` unless you have a specific reason. Dot saves every change right away (contacts, family members, donations, Yahrzeits); it asks first only if it looks like a duplicate. Every change is in Admin → Audit log. To open it by voice, see "Abrir o Dot pela voz no celular" on the Dot page (Siri Shortcut on iPhone, "Ok Google, abrir Dot" on Android).
 
 ## Everyday tasks
 

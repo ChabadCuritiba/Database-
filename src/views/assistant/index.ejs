@@ -3,15 +3,15 @@
   <div class="buggy-head">
     <img src="/static/icons/buggy.svg" alt="" class="buggy-logo" width="44" height="44">
     <div>
-      <h1>Buggy</h1>
+      <h1>Dot</h1>
       <p class="muted small" data-status><%= enabled ? 'Toque no microfone e fale, ou escreva abaixo.' : '' %></p>
     </div>
     <div class="buggy-tools">
-      <label class="inline small" title="Escutar sempre e responder quando ouvir “Buggy”">
-        <input type="checkbox" data-wake> “Hey Buggy”
+      <label class="inline small" title="Escutar sempre e responder quando ouvir “Dot”">
+        <input type="checkbox" data-wake> “Hey Dot”
       </label>
       <label class="inline small"><span data-voice-label>Voz:</span>
-        <select data-speak aria-label="Quando o Buggy responde falando">
+        <select data-speak aria-label="Quando o Dot responde falando">
           <option value="voice">quando eu falar</option>
           <option value="always">sempre</option>
           <option value="never">nunca</option>
@@ -28,14 +28,14 @@
 
   <% if (!enabled) { %>
     <div class="flash flash-warning">
-      Buggy ainda não está ligado. Um administrador precisa colocar a chave do Google Gemini no servidor
+      Dot ainda não está ligado. Um administrador precisa colocar a chave do Google Gemini no servidor
       (<code>GEMINI_API_KEY</code> em <code>/opt/crm/.env</code>) e reiniciar o app.
     </div>
   <% } %>
 
   <div class="chat" data-chat aria-live="polite">
     <% if (!history.length) { %>
-      <div class="bubble buggy-msg" data-welcome>Shalom! Eu sou o Buggy. Posso procurar contatos, adicionar pessoas, registrar doações e Yahrzeits. Por exemplo: “Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com”.</div>
+      <div class="bubble buggy-msg" data-welcome>Shalom! Eu sou o Dot. Posso procurar contatos, adicionar pessoas, registrar doações e Yahrzeits. Por exemplo: “Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com”.</div>
     <% } %>
     <% for (const m of history) { %>
       <div class="bubble <%= m.who === 'me' ? 'me-msg' : 'buggy-msg' %>"><%= m.text %></div>
@@ -55,29 +55,29 @@
     <button type="button" class="mic" data-mic aria-label="Falar" <%= enabled ? '' : 'disabled' %>>
       <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg>
     </button>
-    <input type="text" data-input placeholder="Escreva para o Buggy…" autocomplete="off" <%= enabled ? '' : 'disabled' %>>
+    <input type="text" data-input placeholder="Escreva para o Dot…" autocomplete="off" <%= enabled ? '' : 'disabled' %>>
     <button class="btn" data-send <%= enabled ? '' : 'disabled' %>>Enviar</button>
   </form>
 
   <details class="card shortcut-help">
-    <summary>Abrir o Buggy pela voz no celular</summary>
+    <summary>Abrir o Dot pela voz no celular</summary>
     <div class="cols">
       <div>
-        <h3>iPhone — “E aí Siri, Buggy”</h3>
+        <h3>iPhone — “E aí Siri, Dot”</h3>
         <ol class="small">
           <li>Abra o app <strong>Atalhos</strong> (Shortcuts) → <strong>+</strong>.</li>
           <li>Adicione a ação <strong>Abrir URL</strong> com: <code data-shortcut-url></code></li>
-          <li>Dê o nome <strong>Buggy</strong> ao atalho.</li>
-          <li>Diga <strong>“E aí Siri, Buggy”</strong> (ou “Hey Siri, Buggy”). Na primeira vez, toque no microfone para permitir o acesso.</li>
+          <li>Dê o nome <strong>Dot</strong> ao atalho.</li>
+          <li>Diga <strong>“E aí Siri, Dot”</strong> (ou “Hey Siri, Dot”). Na primeira vez, toque no microfone para permitir o acesso.</li>
         </ol>
       </div>
       <div>
-        <h3>Android — “Ok Google, abrir Buggy”</h3>
+        <h3>Android — “Ok Google, abrir Dot”</h3>
         <ol class="small">
           <li>Nesta página, no Chrome, toque em <strong>⋮</strong> → <strong>Instalar app</strong>. (Se aparecer “Adicionar à tela inicial”, escolha <strong>Instalar</strong>, não “Criar atalho”.)</li>
-          <li>O Buggy aparece entre os seus apps, com o ícone da joaninha.</li>
-          <li>Diga <strong>“Ok Google, abrir Buggy”</strong>. Ele já abre escutando.</li>
-          <li>Se o Gemini disser que não consegue abrir, o Buggy ainda não está instalado como app: repita o passo 1. Tocar no ícone também funciona.</li>
+          <li>O Dot aparece entre os seus apps, com o ícone da joaninha.</li>
+          <li>Diga <strong>“Ok Google, abrir Dot”</strong>. Ele já abre escutando.</li>
+          <li>Se o Gemini disser que não consegue abrir, o Dot ainda não está instalado como app: repita o passo 1. Tocar no ícone também funciona.</li>
         </ol>
         <h3>Microfone bloqueado?</h3>
         <ol class="small">
@@ -86,7 +86,7 @@
         </ol>
       </div>
     </div>
-    <p class="small muted">Com a página aberta e a tela ligada, marque <strong>“Hey Buggy”</strong> para falar sem tocar em nada: diga “Buggy” e o pedido.</p>
+    <p class="small muted">Com a página aberta e a tela ligada, marque <strong>“Hey Dot”</strong> para falar sem tocar em nada: diga “Dot” e o pedido.</p>
   </details>
 </div>
 <script src="/static/js/buggy.js?v=<%= assetVersion %>" defer></script>

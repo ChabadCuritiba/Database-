@@ -67,7 +67,7 @@ export function createApp(db) {
   app.use(express.json({ limit: '1mb' }));
   app.locals.assetVersion = assetVersion();
   app.use('/static', express.static(publicDir, { maxAge: config.isProd ? '7d' : 0 }));
-  // Served from the root so it may control the whole site (needed to install Buggy as an app).
+  // Served from the root so it may control the whole site (needed to install Dot as an app).
   app.get('/sw.js', (req, res) => {
     res.set('Cache-Control', 'no-cache').type('application/javascript').sendFile(path.join(publicDir, 'sw.js'));
   });

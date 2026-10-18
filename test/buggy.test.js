@@ -5,7 +5,7 @@ import { setup, login, createFamily } from './helpers.js';
 import { gemini, pickModel } from '../src/lib/buggy/gemini.js';
 import { config } from '../src/config.js';
 
-/** Replaces Gemini with a script of replies; records what Buggy sent. */
+/** Replaces Gemini with a script of replies; records what Dot sent. */
 function fakeGemini(script) {
   const calls = [];
   gemini.enabled = () => true;
@@ -32,14 +32,14 @@ async function buggyAgent(app, role) {
   return { agent, page };
 }
 
-test('Buggy creates a contact with a family member right away, without asking', async () => {
+test('Dot creates a contact with a family member right away, without asking', async () => {
   const { db, app } = setup();
   const calls = fakeGemini([
     callTool('search_contacts', { query: 'Joseli' }),
     callTool('create_contact', { family_name: 'Joseli', first_name: 'Joseli', email: 'Joseli@Gmail.com', members: [{ first_name: 'Dimini', relation: 'spouse' }] }),
   ]);
   const { agent, page } = await buggyAgent(app, 'staff');
-  assert.match(page.text, /Buggy/);
+  assert.match(page.text, /Dot/);
   assert.match(page.text, /buggy\.webmanifest/);
 
   const res = await chat(agent, 'Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com');
@@ -54,18 +54,18 @@ test('Buggy creates a contact with a family member right away, without asking', 
   assert.deepEqual(second.at(-1).parts[0].functionResponse.response.result, { total: 0, contacts: [] });
   assert.ok(calls[0].tools.some((t) => t.name === 'create_contact'));
   assert.ok(!calls[0].tools.some((t) => t.name === 'record_donation'), 'staff cannot record donations');
-  assert.match(calls[0].system, /You are Buggy/);
+  assert.match(calls[0].system, /You are Dot/);
 
   const fam = db.prepare("SELECT * FROM families WHERE family_name = 'Joseli'").get();
   assert.equal(fam.email, 'joseli@gmail.com');
-  assert.equal(fam.source, 'Buggy');
+  assert.equal(fam.source, 'Dot');
   const people = db.prepare('SELECT first_name, relation FROM people WHERE family_id = ? ORDER BY id').all(fam.id);
   assert.deepEqual(people, [{ first_name: 'Joseli', relation: 'primary' }, { first_name: 'Dimini', relation: 'spouse' }]);
   assert.equal(res.body.links[0].href, `/families/${fam.id}`);
-  assert.ok(db.prepare("SELECT 1 FROM audit_log WHERE details = 'via Buggy'").get());
+  assert.ok(db.prepare("SELECT 1 FROM audit_log WHERE details = 'via Dot'").get());
 });
 
-test('Buggy records donations right away, without asking for confirmation', async () => {
+test('Dot records donations right away, without asking for confirmation', async () => {
   const { db, app } = setup();
   const fid = createFamily(db);
   fakeGemini([
@@ -84,7 +84,7 @@ test('Buggy records donations right away, without asking for confirmation', asyn
   assert.equal(db.prepare('SELECT f.name FROM payment_splits s JOIN funds f ON f.id = s.fund_id WHERE s.payment_id = ?').get(p.id).name, 'Fundo de Construção');
 });
 
-test('Buggy refuses tools the user may not use and reports bad input back to the model', async () => {
+test('Dot refuses tools the user may not use and reports bad input back to the model', async () => {
   const { db, app } = setup();
   const fid = createFamily(db);
   const calls = fakeGemini([
@@ -104,7 +104,7 @@ test('Buggy refuses tools the user may not use and reports bad input back to the
   assert.match(calls[3].contents.at(-1).parts[0].functionResponse.response.error, /not allowed/);
 });
 
-test('Buggy adds a Yahrzeit from a Hebrew date and answers lookups', async () => {
+test('Dot adds a Yahrzeit from a Hebrew date and answers lookups', async () => {
   const { db, app } = setup();
   const fid = createFamily(db);
   const calls = fakeGemini([
@@ -123,7 +123,7 @@ test('Buggy adds a Yahrzeit from a Hebrew date and answers lookups', async () =>
   assert.equal(result.recent_donations, undefined, 'staff do not see donations');
 });
 
-test('Buggy page explains setup when no Gemini key is configured', async () => {
+test('Dot page explains setup when no Gemini key is configured', async () => {
   const { app } = setup();
   gemini.enabled = () => false;
   const { agent } = await buggyAgent(app, 'staff');
@@ -224,7 +224,7 @@ test('Gemini busy: retries, then falls back to the next model; a failed turn is 
   }
 });
 
-test('Buggy can be installed as an app: manifest and root service worker are served', async () => {
+test('Dot can be installed as an app: manifest and root service worker are served', async () => {
   const { app } = setup();
   const request = (await import('supertest')).default;
   const sw = await request(app).get('/sw.js');
@@ -233,7 +233,7 @@ test('Buggy can be installed as an app: manifest and root service worker are ser
   assert.match(sw.text, /addEventListener\('fetch'/);
   const m = await request(app).get('/static/buggy.webmanifest');
   const manifest = JSON.parse(m.text);
-  assert.equal(manifest.name, 'Buggy');
+  assert.equal(manifest.name, 'Dot');
   assert.equal(manifest.display, 'standalone');
   assert.ok(manifest.icons.some((i) => i.sizes === '512x512'));
 });
@@ -328,7 +328,7 @@ test('a Gemini model that never answers is abandoned quickly for the next one', 
   }
 });
 
-test('progress steps are streamed while Buggy works, then the result', async () => {
+test('progress steps are streamed while Dot works, then the result', async () => {
   const { db, app } = setup();
   fakeGemini([
     callTool('search_contacts', { query: 'Cohen' }),
@@ -422,7 +422,7 @@ test('when every Flash model is busy, a Flash-Lite backup answers', async () => 
   }
 });
 
-test('Buggy answers in the language chosen on the page', async () => {
+test('Dot answers in the language chosen on the page', async () => {
   const { db, app } = setup();
   const calls = fakeGemini([
     callTool('create_contact', { family_name: 'Edward', email: 'edward@gmail.com' }),
@@ -469,7 +469,7 @@ test('create_contact saves without asking in English and Hebrew, even with a sha
   assert.equal(db.prepare("SELECT COUNT(*) n FROM families WHERE family_name = 'Levi'").get().n, 1);
 });
 
-test('when the model asks permission to add a contact, Buggy tells it to save instead', async () => {
+test('when the model asks permission to add a contact, Dot tells it to save instead', async () => {
   const { db, app } = setup();
   const calls = fakeGemini([
     say('Would you like me to add John Smith to your contacts?'),

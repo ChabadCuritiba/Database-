@@ -16,7 +16,7 @@ const retired = new Set();
 const suggested = [];
 
 /**
- * Keep "thinking" to a minimum: Buggy's tasks are simple and speed matters.
+ * Keep "thinking" to a minimum: Dot's tasks are simple and speed matters.
  * Gemini 2.x takes a token budget, Gemini 3+ a level.
  */
 export function thinkingConfigFor(model) {

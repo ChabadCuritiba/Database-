@@ -1,4 +1,4 @@
-// The actions Buggy may take. Read tools run immediately; write tools only
+// The actions Dot may take. Read tools run immediately; write tools only
 // prepare a proposal that the user must confirm before it is executed.
 import { can } from '../permissions.js';
 import { findFamilies } from '../contactQuery.js';
@@ -172,13 +172,13 @@ export const TOOLS = [
     execute(db, user, v, lang) {
       const id = db.transaction(() => {
         const fid = Number(db.prepare('INSERT INTO families (family_name, salutation, email, mobile, phone, city, notes, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-          .run(v.family_name, v.salutation, v.email, v.mobile, v.phone, v.city, v.notes, 'Buggy').lastInsertRowid);
+          .run(v.family_name, v.salutation, v.email, v.mobile, v.phone, v.city, v.notes, 'Dot').lastInsertRowid);
         const person = db.prepare('INSERT INTO people (family_id, relation, first_name, last_name, email, mobile) VALUES (?, ?, ?, ?, ?, ?)');
         if (v.first_name) person.run(fid, 'primary', v.first_name, v.family_name, v.email, v.mobile);
         for (const m of v.members) person.run(fid, m.relation, m.first_name, m.last_name || v.family_name, null, null);
         return fid;
       })();
-      audit(db, user, 'create', 'family', id, 'via Buggy');
+      audit(db, user, 'create', 'family', id, 'via Dot');
       return { message: T(lang).created(v.family_name), link: `/families/${id}`, family_id: id };
     },
   },
@@ -218,7 +218,7 @@ export const TOOLS = [
     execute(db, user, v, lang) {
       const id = db.prepare('INSERT INTO people (family_id, relation, first_name, last_name, birth_date, email, mobile, hebrew_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
         .run(v.family_id, v.relation, v.first_name, v.last_name, v.birth_date, v.email, v.mobile, v.hebrew_name).lastInsertRowid;
-      audit(db, user, 'create', 'person', id, 'via Buggy');
+      audit(db, user, 'create', 'person', id, 'via Dot');
       return { message: T(lang).memberAdded(v.first_name, family(db, v.family_id).family_name), link: `/families/${v.family_id}` };
     },
   },
@@ -248,7 +248,7 @@ export const TOOLS = [
     execute(db, user, { family_id, changes }, lang) {
       const keys = Object.keys(changes);
       db.prepare(`UPDATE families SET ${keys.map((k) => `${k} = ?`).join(', ')}, updated_at = datetime('now') WHERE id = ?`).run(...keys.map((k) => changes[k]), family_id);
-      audit(db, user, 'update', 'family', family_id, { fields: keys, via: 'Buggy' });
+      audit(db, user, 'update', 'family', family_id, { fields: keys, via: 'Dot' });
       return { message: T(lang).updated, link: `/families/${family_id}` };
     },
   },
@@ -277,7 +277,7 @@ export const TOOLS = [
     },
     execute(db, user, v, lang) {
       const id = recordDonation(db, { familyId: v.family_id, date: v.date, method: v.method, notes: v.notes, userId: user.id, splits: [{ fundId: v.fund_id, amount: v.amount }] });
-      audit(db, user, 'create', 'donation', id, 'via Buggy');
+      audit(db, user, 'create', 'donation', id, 'via Dot');
       return { message: T(lang).donationSaved(v.amount), link: `/finance/donations/${id}` };
     },
   },
@@ -320,7 +320,7 @@ export const TOOLS = [
     execute(db, user, v, lang) {
       const id = db.prepare(`INSERT INTO occasions (family_id, type, name, hebrew_name, relationship, gregorian_date, after_sunset, remind_days_before)
         VALUES (?, ?, ?, ?, ?, ?, ?, 7)`).run(v.family_id, v.type, v.name, v.hebrew_name, v.relationship, v.gregorian_date, v.after_sunset).lastInsertRowid;
-      audit(db, user, 'create', 'occasion', id, 'via Buggy');
+      audit(db, user, 'create', 'occasion', id, 'via Dot');
       return { message: T(lang).occasionAdded(v.type, v.name), link: `/families/${v.family_id}` };
     },
   },

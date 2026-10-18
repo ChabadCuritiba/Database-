@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#1f4e8c">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Buggy">
+  <meta name="apple-mobile-web-app-title" content="Dot">
   <link rel="apple-touch-icon" href="/static/icons/buggy-192.png">
   <% } %>
   <script src="/static/js/app.js?v=<%= assetVersion %>" defer></script>
@@ -31,7 +31,7 @@
           ['/events', 'Events', 'events.read'],
           ['/comms', 'Communications', 'comms.send'],
           ['/admin', 'Admin', 'admin'],
-          ['/assistant', '🎙 Buggy', null],
+          ['/assistant', '🎙 Dot', null],
         ]; %>
         <% for (const [href, label, perm] of nav) { if (perm && !can(perm)) continue; %>
           <a href="<%= href %>" class="<%= path.startsWith(href) ? 'active' : '' %>"><%= label %></a>

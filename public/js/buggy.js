@@ -1,4 +1,4 @@
-// Buggy page: speech in (Web Speech API), chat with the server, speech out.
+// Dot page: speech in (Web Speech API), chat with the server, speech out.
 (function () {
   const root = document.querySelector('[data-buggy]');
   if (!root) return;
@@ -32,25 +32,25 @@
 
   // The page's own short texts, in the chosen language.
   const UI = {
-    'pt-BR': { open: 'Abrir', confirmTitle: 'Confirmar?', yes: '✓ Sim, salvar', no: 'Cancelar', yesWord: 'Sim', noWord: 'Não', placeholder: 'Escreva para o Buggy…',
+    'pt-BR': { open: 'Abrir', confirmTitle: 'Confirmar?', yes: '✓ Sim, salvar', no: 'Cancelar', yesWord: 'Sim', noWord: 'Não', placeholder: 'Escreva para o Dot…',
       sayYes: 'Diga “sim” para salvar ou “não” para cancelar.', tapYes: 'Toque em “Sim, salvar” ou “Cancelar”.', listening: 'Escutando…',
       micBlocked: 'Permita o microfone (toque no ícone à esquerda do endereço).', noSpeech: 'Não ouvi nada. Toque e fale de novo.',
-      yesListening: 'Sim? Estou ouvindo…', wakeHint: 'Diga “Buggy” e o seu pedido…', wakeBlocked: 'Permita o microfone para usar o “Hey Buggy”.',
-      welcome: 'Shalom! Eu sou o Buggy. Posso procurar contatos, adicionar pessoas, registrar doações e Yahrzeits. Por exemplo: “Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com”.',
+      yesListening: 'Sim? Estou ouvindo…', wakeHint: 'Diga “Dot” e o seu pedido…', wakeBlocked: 'Permita o microfone para usar o “Hey Dot”.',
+      welcome: 'Shalom! Eu sou o Dot. Posso procurar contatos, adicionar pessoas, registrar doações e Yahrzeits. Por exemplo: “Adiciona Joseli e Dimini aos contatos, email joseli@gmail.com”.',
       offline: 'Sem conexão com o servidor.', dropped: 'A conexão caiu antes da resposta. Tente de novo.', newChat: 'Nova conversa. Como posso ajudar?',
       send: 'Enviar', voice: 'Voz:', reset: 'Nova conversa', speak: ['quando eu falar', 'sempre', 'nunca'] },
-    'en-US': { open: 'Open', confirmTitle: 'Confirm?', yes: '✓ Yes, save', no: 'Cancel', yesWord: 'Yes', noWord: 'No', placeholder: 'Write to Buggy…',
+    'en-US': { open: 'Open', confirmTitle: 'Confirm?', yes: '✓ Yes, save', no: 'Cancel', yesWord: 'Yes', noWord: 'No', placeholder: 'Write to Dot…',
       sayYes: 'Say “yes” to save or “no” to cancel.', tapYes: 'Tap “Yes, save” or “Cancel”.', listening: 'Listening…',
       micBlocked: 'Allow the microphone (tap the icon left of the address).', noSpeech: "I didn't hear anything. Tap and speak again.",
-      yesListening: "Yes? I'm listening…", wakeHint: 'Say “Buggy” and your request…', wakeBlocked: 'Allow the microphone to use “Hey Buggy”.',
-      welcome: 'Shalom! I am Buggy. I can find contacts, add people, record donations and Yahrzeits. For example: “Add Joseli and Dimini to the contacts, email joseli@gmail.com”.',
+      yesListening: "Yes? I'm listening…", wakeHint: 'Say “Dot” and your request…', wakeBlocked: 'Allow the microphone to use “Hey Dot”.',
+      welcome: 'Shalom! I am Dot. I can find contacts, add people, record donations and Yahrzeits. For example: “Add Joseli and Dimini to the contacts, email joseli@gmail.com”.',
       offline: 'No connection to the server.', dropped: 'The connection dropped before the answer. Please try again.', newChat: 'New conversation. How can I help?',
       send: 'Send', voice: 'Voice:', reset: 'New conversation', speak: ['when I speak', 'always', 'never'] },
-    'he-IL': { open: 'פתח', confirmTitle: 'לאשר?', yes: '✓ כן, לשמור', no: 'ביטול', yesWord: 'כן', noWord: 'לא', placeholder: 'כתוב לבאגי…',
+    'he-IL': { open: 'פתח', confirmTitle: 'לאשר?', yes: '✓ כן, לשמור', no: 'ביטול', yesWord: 'כן', noWord: 'לא', placeholder: 'כתוב לדוט…',
       sayYes: 'אמור “כן” כדי לשמור או “לא” כדי לבטל.', tapYes: 'הקש “כן, לשמור” או “ביטול”.', listening: 'מקשיב…',
       micBlocked: 'אשר גישה למיקרופון (הקש על הסמל משמאל לכתובת).', noSpeech: 'לא שמעתי כלום. הקש ודבר שוב.',
-      yesListening: 'כן? אני מקשיב…', wakeHint: 'אמור “באגי” ואת הבקשה שלך…', wakeBlocked: 'אשר גישה למיקרופון כדי להשתמש ב“Hey Buggy”.',
-      welcome: 'שלום! אני באגי. אני יכול לחפש אנשי קשר, להוסיף אנשים, לרשום תרומות ויארצייטים. לדוגמה: “תוסיף את יוסי כהן לאנשי הקשר, אימייל yossi@gmail.com”.',
+      yesListening: 'כן? אני מקשיב…', wakeHint: 'אמור “דוט” ואת הבקשה שלך…', wakeBlocked: 'אשר גישה למיקרופון כדי להשתמש ב“Hey Dot”.',
+      welcome: 'שלום! אני דוט. אני יכול לחפש אנשי קשר, להוסיף אנשים, לרשום תרומות ויארצייטים. לדוגמה: “תוסיף את יוסי כהן לאנשי הקשר, אימייל yossi@gmail.com”.',
       offline: 'אין חיבור לשרת.', dropped: 'החיבור נותק לפני התשובה. נסה שוב.', newChat: 'שיחה חדשה. איך אפשר לעזור?',
       send: 'שלח', voice: 'קול:', reset: 'שיחה חדשה', speak: ['כשאני מדבר', 'תמיד', 'אף פעם'] },
   };
@@ -176,7 +176,7 @@
   };
   const stepLabel = (code) => (STEPS[langSel.value] || STEPS['pt-BR'])[code] || (STEPS['pt-BR'][code] ? STEPS['pt-BR'][code] : code);
 
-  /** A "working" bubble listing Buggy's steps, ticking off finished ones. */
+  /** A "working" bubble listing Dot's steps, ticking off finished ones. */
   function progressBubble() {
     const div = document.createElement('div');
     div.className = 'bubble buggy-msg progress';
@@ -280,10 +280,11 @@
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   let rec = null;
   let listening = false;   // a single command is being captured
-  let wakeMode = false;    // listening continuously for "Buggy ..."
+  let wakeMode = false;    // listening continuously for "Dot ..."
   let speaking = false;
-  let awaitingCommand = false; // heard "Buggy" alone, next phrase is the command
-  const WAKE = /\b(hey |ei |oi |e a[ií] )?(bug+y|bug+ie|bagg?y|bog+y|b[aá]gui|bugue|bugui|b[uú]gui)\b[,.!]?\s*/i;
+  let awaitingCommand = false; // heard "Dot" alone, next phrase is the command
+  // Only at the start of a phrase, so a "dot" inside a command (e.g. "gmail dot com") is never cut out.
+  const WAKE = /^\s*(hey |hei |ei |oi |e a[ií] |היי )?(dot+s?|doth|dott?[ie]|d[oó]ti|d[oó]te|דוט|דוטי)(?=$|[\s,.!?])[,.!?]?\s*/i;
 
   if (!Recognition) {
     mic.title = 'Este navegador não reconhece voz. Use o Chrome, o Safari ou escreva.';
@@ -327,7 +328,7 @@
       input.value = '';
       const command = t.replace(WAKE, '').trim();
       if (command) routeSpeech(command);
-      else if (t) { setStatus(ui().yesListening); beep(); setTimeout(listenOnce, 300); return; } // just "Buggy"
+      else if (t) { setStatus(ui().yesListening); beep(); setTimeout(listenOnce, 300); return; } // just "Dot"
       else if (!busy) setStatus('');
       if (wakeMode) resumeListening();
     };
@@ -413,7 +414,7 @@
     if (document.visibilityState === 'visible') { wakeLock = null; keepAwake(); resumeListening(); }
   });
 
-  // Lets Chrome offer "Install app", so the phone's assistant can open Buggy by name.
+  // Lets Chrome offer "Install app", so the phone's assistant can open Dot by name.
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
   applyLanguage();

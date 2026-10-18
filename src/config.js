@@ -63,7 +63,7 @@ export const config = {
     cron: env.BACKUP_CRON || '0 3 * * *',
     gcsBucket: env.GCS_BUCKET || '',
   },
-  // Buggy, the voice assistant (Google Gemini). GEMINI_MODEL is optional:
+  // Dot, the voice assistant (Google Gemini). GEMINI_MODEL is optional:
   // when empty, the newest available Gemini "Flash" model is used.
   gemini: {
     apiKey: env.GEMINI_API_KEY || '',

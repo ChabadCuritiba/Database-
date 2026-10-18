@@ -1,4 +1,4 @@
-// Buggy's conversation loop: the model reads data through tools and proposes
+// Dot's conversation loop: the model reads data through tools and proposes
 // changes; changes run only after the user confirms them.
 import { gemini } from './gemini.js';
 import { toolsFor, declarations, findTool, ToolError } from './tools.js';
@@ -22,7 +22,7 @@ function systemPrompt(user, settings, lang) {
   const today = todayISO();
   const h = formatHebrew(toHebrew(today));
   return [
-    `You are Buggy, the friendly assistant inside the contact-management system of ${settings.org_name || 'a Chabad house'}.`,
+    `You are Dot, the friendly assistant inside the contact-management system of ${settings.org_name || 'a Chabad house'}.`,
     `You are talking with ${user.name || user.email} (role: ${user.role}). Today is ${today} (${h.en}).`,
     `Always reply in ${LANGUAGE_NAME[lang]}, whatever language earlier messages used. Your replies are read aloud: keep them short and natural,`,
     'one to three sentences, plain text without markdown, lists or emojis. Say amounts like "cento e oitenta reais" only if natural.',
@@ -54,7 +54,7 @@ function note(state, userNote, reply) {
 }
 
 /**
- * Progress step codes shown while Buggy works; the page translates them
+ * Progress step codes shown while Dot works; the page translates them
  * (thinking, searching, creating...). Keep them short and non-technical.
  */
 const STEP_FOR_TOOL = {

@@ -1,4 +1,4 @@
-// Buggy's fixed texts (confirmations, results, errors) in the languages of the page.
+// Dot's fixed texts (confirmations, results, errors) in the languages of the page.
 // Messages to the model stay in English; these are what the user reads or hears.
 import { formatMoney } from '../format.js';
 
@@ -51,8 +51,8 @@ const TEXT = {
     nothingPending: 'Não há nada esperando confirmação.',
     tooMany: 'Muitas mensagens seguidas. Espere um minuto.',
     busy: 'Os servidores do Google estão ocupados agora. Tente de novo em um minuto.',
-    error: (m) => `Buggy não conseguiu responder agora. (${m})`,
-    notConfigured: 'Buggy ainda não está configurado (falta a GEMINI_API_KEY).',
+    error: (m) => `Dot não conseguiu responder agora. (${m})`,
+    notConfigured: 'Dot ainda não está configurado (falta a GEMINI_API_KEY).',
   },
   en: {
     createContact: (v) => [`Create contact "${v.family_name}"`, v.first_name && `main contact ${v.first_name}`, v.email && `email ${v.email}`,
@@ -77,8 +77,8 @@ const TEXT = {
     nothingPending: 'Nothing is waiting for confirmation.',
     tooMany: 'Too many messages in a row. Please wait a minute.',
     busy: "Google's servers are busy right now. Please try again in a minute.",
-    error: (m) => `Buggy couldn't answer right now. (${m})`,
-    notConfigured: 'Buggy is not configured yet (GEMINI_API_KEY is missing).',
+    error: (m) => `Dot couldn't answer right now. (${m})`,
+    notConfigured: 'Dot is not configured yet (GEMINI_API_KEY is missing).',
   },
   he: {
     createContact: (v) => [`ליצור איש קשר "${v.family_name}"`, v.first_name && `איש קשר ראשי ${v.first_name}`, v.email && `אימייל ${v.email}`,
@@ -103,8 +103,8 @@ const TEXT = {
     nothingPending: 'אין שום דבר שממתין לאישור.',
     tooMany: 'יותר מדי הודעות ברצף. המתן דקה.',
     busy: 'השרתים של גוגל עמוסים כרגע. נסה שוב בעוד דקה.',
-    error: (m) => `באגי לא הצליח לענות כרגע. (${m})`,
-    notConfigured: 'באגי עדיין לא מוגדר (חסר GEMINI_API_KEY).',
+    error: (m) => `דוט לא הצליח לענות כרגע. (${m})`,
+    notConfigured: 'דוט עדיין לא מוגדר (חסר GEMINI_API_KEY).',
   },
 };
 
